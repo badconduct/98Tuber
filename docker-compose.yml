@@ -1,0 +1,26 @@
+version: "3"
+
+services:
+  98tuber:
+    build: .
+    container_name: 98tuber
+    restart: unless-stopped
+    environment:
+      - PORT=3000
+      - YOUTUBE_API_KEY=${YOUTUBE_API_KEY}
+    volumes:
+      - .:/app # <--- Mount source code for live updates
+      - /app/node_modules # <--- Keep container's node_modules separate from Windows
+      - ./cache:/app/cache
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=gemini-98-proxy-client_default"
+      - "traefik.http.routers.98tuber.rule=Host(`youtube.home.local`)"
+      - "traefik.http.routers.98tuber.entrypoints=web"
+      - "traefik.http.services.98tuber.loadbalancer.server.port=3000"
+    networks:
+      - gemini-98-proxy-client_default
+
+networks:
+  gemini-98-proxy-client_default:
+    external: true

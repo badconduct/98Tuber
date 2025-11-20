@@ -1,0 +1,222 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/1999/REC-html401-19991224/loose.dtd">
+<html>
+  <head>
+    <title>YouTube - Broadcast Yourself.</title>
+    <link rel="stylesheet" href="/base.css" type="text/css" />
+  </head>
+  <body>
+    <div id="baseDiv">
+      <%- include('header', { page: 'videos' }) %>
+
+      <div id="mainContent">
+        <div id="sectionHeader" class="videosColor">
+          <div class="name">Videos</div>
+          <span class="title">
+            <% if (filter == 'recent') { %>Most Recent<% } %> <% if (filter ==
+            'viewed') { %>Most Viewed<% } %> <% if (filter == 'rated') { %>Top
+            Rated<% } %> <% if (filter == 'discussed') { %>Most Discussed<% } %>
+          </span>
+        </div>
+
+        <div id="sideNav">
+          <div class="navHead videosColor">Browse</div>
+          <div class="navBody12">
+            <a href="/videos?filter=recent">Most Recent</a><br />
+            <div class="label">&raquo; Most Viewed</div>
+            <a href="/videos?filter=rated">Top Rated</a><br />
+            <a href="/videos?filter=discussed">Most Discussed</a><br />
+            <a href="#">Top Favorites</a><br />
+            <a href="#">Most Linked</a><br />
+            <a href="#">Recently Featured</a><br />
+          </div>
+
+          <div class="navHead videosColor">Time</div>
+          <div class="navBody11">
+            <span class="label">&raquo; Today</span><br />
+            <a href="#">This Week</a><br />
+            <a href="#">This Month</a><br />
+            <a href="#">All Time</a><br />
+          </div>
+
+          <div class="navHead videosColor">Category</div>
+          <div class="navBody11">
+            <div class="label">&raquo; All</div>
+            <a href="#">Arts &amp; Animation</a><br />
+            <a href="#">Autos &amp; Vehicles</a><br />
+            <a href="#">Comedy</a><br />
+            <a href="#">Entertainment</a><br />
+            <a href="#">Music</a><br />
+            <a href="#">News &amp; Blogs</a><br />
+            <a href="#">People</a><br />
+            <a href="#">Pets &amp; Animals</a><br />
+            <a href="#">Science &amp; Technology</a><br />
+            <a href="#">Sports</a><br />
+            <a href="#">Travel &amp; Places</a><br />
+            <a href="#">Video Games</a><br />
+          </div>
+        </div>
+
+        <div id="mainContentWithNav">
+          <table cellpadding="0" cellspacing="0" border="0" width="100%">
+            <tr valign="top">
+              <% videos.forEach(function(video, index) { %> <% if (index > 0 &&
+              index % 4 == 0) { %>
+            </tr>
+            <tr valign="top">
+              <% } %>
+              <td width="25%">
+                <div class="v120vEntry">
+                  <div style="margin-top: 5px">
+                    <div class="vstill">
+                      <a href="/watch?v=<%= video.id %>">
+                        <img
+                          src="/thumbnail?url=<%= encodeURIComponent(video.thumbnail) %>"
+                          class="vimg"
+                          alt="<%= video.title %>"
+                        />
+                      </a>
+                    </div>
+                    <div class="vtitle">
+                      <a href="/watch?v=<%= video.id %>"><%= video.title %></a
+                      ><br />
+                      <span class="runtime"><%= video.duration %></span>
+                    </div>
+                    <div class="vfacets">
+                      <span class="grayText">Added:</span> <%= video.publishedAt
+                      %><br />
+                      <span class="grayText">From:</span>
+                      <a href="#"><%= video.channelTitle %></a><br />
+                      <span class="grayText">Views:</span> <%= video.viewCount
+                      %><br />
+                    </div>
+                    <nobr>
+                      <% for(let i=0; i<5; i++) { %>
+                      <span style="color: #fc0; font-size: 12px">&#9733;</span>
+                      <% } %>
+                    </nobr>
+                    <div class="rating">
+                      <%= Math.floor(Math.random() * 1000) %> ratings
+                    </div>
+                  </div>
+                </div>
+              </td>
+              <% }); %>
+            </tr>
+          </table>
+
+          <div class="footerBox">
+            <div class="pagingDiv">
+              <% if (prevPageToken) { %>
+              <a
+                href="/videos?filter=<%= filter %>&pageToken=<%= prevPageToken %>"
+                class="pagerNotCurrent"
+                >Previous</a
+              >
+              <% } %>
+              <span class="pagerCurrent">Current</span>
+              <% if (nextPageToken) { %>
+              <a
+                href="/videos?filter=<%= filter %>&pageToken=<%= nextPageToken %>"
+                class="pagerNotCurrent"
+                >Next</a
+              >
+              <% } %>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="spacer">&nbsp;</div>
+      <div id="footerDiv">
+        <div id="footerContent">
+          <div id="footerLinks">
+            <table
+              border="0"
+              cellpadding="0"
+              cellspacing="0"
+              width="90%"
+              align="center"
+            >
+              <tr valign="top">
+                <td>
+                  <div class="footColumnBar">
+                    <div class="footLabel">Your Account</div>
+                    <div class="footValues">
+                      <div class="column">
+                        <a href="#">Videos</a><br /><a href="#">Favorites</a
+                        ><br /><a href="#">Playlists</a>
+                      </div>
+                      <div class="column">
+                        <a href="#">Subscriptions</a><br /><a href="#">Inbox</a
+                        ><br /><a href="#">more...</a>
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <div class="footColumnBar">
+                    <div class="footLabel">YouTube</div>
+                    <div class="footValues">
+                      <div class="column">
+                        <a href="#">About</a><br /><a href="#">Blog</a><br /><a
+                          href="#"
+                          >Contact</a
+                        >
+                      </div>
+                      <div class="column">
+                        <a href="#">Advertising</a><br /><a href="#">Jobs</a
+                        ><br /><a href="#">Press</a>
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <div class="footColumn">
+                    <div class="footLabel">Help &amp; Info</div>
+                    <div class="footValues">
+                      <div class="column">
+                        <a href="#">Help Center</a><br /><a href="#"
+                          >Video Toolbox</a
+                        ><br /><a href="#">Developer APIs</a>
+                      </div>
+                      <div class="column">
+                        <a href="#">Safety Tips</a><br /><a href="#"
+                          >RSS Syndication</a
+                        ><br /><a href="#">Community Guidelines</a>
+                      </div>
+                      <div class="column">
+                        <a href="#">Terms of Use</a><br /><a href="#"
+                          >Privacy Policy</a
+                        ><br /><a href="#">Copyright Info</a>
+                      </div>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            </table>
+          </div>
+        </div>
+        <div id="footerSearch">
+          <form
+            name="searchFormFooter"
+            id="searchFormFooter"
+            method="get"
+            action="/search"
+          >
+            <span class="smallLabel">Search for&nbsp;</span>
+            <input
+              type="text"
+              name="q"
+              maxlength="128"
+              class="searchField"
+              value=""
+            />
+            &nbsp;
+            <input type="submit" name="search" value="Search" />
+          </form>
+        </div>
+        <div id="footerCopyright">Copyright &copy; 2006 YouTube, Inc.</div>
+      </div>
+    </div>
+  </body>
+</html>
