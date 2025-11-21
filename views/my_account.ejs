@@ -1,0 +1,114 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+  <head>
+    <title>98Tuber - My Account</title>
+    <link rel="stylesheet" type="text/css" href="/base.css" />
+  </head>
+  <body>
+    <div align="center">
+      <div id="main_container">
+        <%- include('header') %>
+        <br />
+        <div class="section_title">My Account: <%= user.username %></div>
+        <div style="text-align: right; padding-right: 10px">
+          <a href="/logout">Log Out</a>
+        </div>
+        <br />
+
+        <!-- Favorites -->
+        <div class="section_title">My Favorites</div>
+        <table width="100%" border="0" cellspacing="0" cellpadding="5">
+          <% if (favorites.length === 0) { %>
+          <tr>
+            <td>No favorites yet.</td>
+          </tr>
+          <% } else { %> <% favorites.forEach(function(video) { %>
+          <tr>
+            <td width="130" valign="top">
+              <a href="/watch?v=<%= video.video_id %>">
+                <img
+                  src="<%= video.thumbnail %>"
+                  width="120"
+                  height="90"
+                  border="0"
+                  style="border: 1px solid #999"
+                />
+              </a>
+            </td>
+            <td valign="top">
+              <a href="/watch?v=<%= video.video_id %>" class="video_title_large"
+                ><%= video.title %></a
+              ><br />
+              <span class="video_meta">From: <%= video.channel_title %></span
+              ><br />
+              <span class="video_meta">Views: <%= video.view_count %></span
+              ><br />
+              <form
+                action="/favorites/remove"
+                method="post"
+                style="margin-top: 5px"
+              >
+                <input
+                  type="hidden"
+                  name="video_id"
+                  value="<%= video.video_id %>"
+                />
+                <input type="submit" value="Remove" style="font-size: 10px" />
+              </form>
+            </td>
+          </tr>
+          <% }); %> <% } %>
+        </table>
+        <br />
+
+        <!-- QuickList -->
+        <div class="section_title">My QuickList</div>
+        <table width="100%" border="0" cellspacing="0" cellpadding="5">
+          <% if (quicklist.length === 0) { %>
+          <tr>
+            <td>QuickList is empty.</td>
+          </tr>
+          <% } else { %> <% quicklist.forEach(function(video) { %>
+          <tr>
+            <td width="130" valign="top">
+              <a href="/watch?v=<%= video.video_id %>">
+                <img
+                  src="<%= video.thumbnail %>"
+                  width="120"
+                  height="90"
+                  border="0"
+                  style="border: 1px solid #999"
+                />
+              </a>
+            </td>
+            <td valign="top">
+              <a href="/watch?v=<%= video.video_id %>" class="video_title_large"
+                ><%= video.title %></a
+              ><br />
+              <span class="video_meta">From: <%= video.channel_title %></span
+              ><br />
+              <span class="video_meta">Views: <%= video.view_count %></span
+              ><br />
+              <form
+                action="/quicklist/remove"
+                method="post"
+                style="margin-top: 5px"
+              >
+                <input
+                  type="hidden"
+                  name="video_id"
+                  value="<%= video.video_id %>"
+                />
+                <input type="submit" value="Remove" style="font-size: 10px" />
+              </form>
+            </td>
+          </tr>
+          <% }); %> <% } %>
+        </table>
+
+        <br /><br />
+        <div align="center" class="footer">&copy; 2025 98Tuber</div>
+      </div>
+    </div>
+  </body>
+</html>

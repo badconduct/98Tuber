@@ -1,0 +1,395 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+  <head>
+    <title>YouTube - Sign Up</title>
+    <link rel="stylesheet" type="text/css" href="/base.css" />
+  </head>
+  <body>
+    <div align="center">
+      <div id="main_container">
+        <%- include('header') %>
+        <br />
+
+        <table
+          width="100%"
+          align="center"
+          cellpadding="0"
+          cellspacing="0"
+          border="0"
+        >
+          <tr valign="top">
+            <!-- Left Column: Sign Up Form -->
+            <td width="70%" style="padding-right: 15px">
+              <div
+                style="font-size: 16px; font-weight: bold; margin-bottom: 5px"
+              >
+                Create Your YouTube Account
+              </div>
+              <div style="font-size: 11px; margin-bottom: 15px">
+                It's free and easy. Just fill out the account info below.
+                <span style="color: red">(All fields required)</span>
+              </div>
+
+              <% if (typeof error !== 'undefined') { %>
+              <div style="color: red; font-weight: bold; margin-bottom: 10px">
+                <%= error %>
+              </div>
+              <% } %>
+
+              <div
+                style="
+                  background-color: #cedff5;
+                  border: 1px solid #99ccff;
+                  padding: 15px;
+                "
+              >
+                <form action="/signup" method="post">
+                  <table
+                    border="0"
+                    cellspacing="0"
+                    cellpadding="5"
+                    width="100%"
+                  >
+                    <!-- Account Type -->
+                    <tr>
+                      <td align="right" width="150" valign="top">
+                        <b>Account Type:</b>
+                      </td>
+                      <td valign="top">
+                        <select name="account_type">
+                          <option value="Standard">Standard</option>
+                          <option value="Director">Director</option>
+                          <option value="Musician">Musician</option>
+                          <option value="Comedian">Comedian</option>
+                          <option value="Guru">Guru</option>
+                        </select>
+                      </td>
+                    </tr>
+
+                    <!-- Email -->
+                    <tr>
+                      <td align="right" valign="top"><b>Email Address:</b></td>
+                      <td valign="top">
+                        <input
+                          type="text"
+                          name="email"
+                          size="30"
+                          maxlength="60"
+                        />
+                      </td>
+                    </tr>
+
+                    <!-- Username -->
+                    <tr>
+                      <td align="right" valign="top"><b>Username:</b></td>
+                      <td valign="top">
+                        <input
+                          type="text"
+                          name="username"
+                          size="30"
+                          maxlength="20"
+                        />
+                        <a href="#" style="font-size: 10px">check</a>
+                        <div style="font-size: 10px; color: #444">
+                          Your username can only contain letters A-Z or numbers
+                          0-9
+                        </div>
+                      </td>
+                    </tr>
+
+                    <!-- Password -->
+                    <tr>
+                      <td align="right" valign="top"><b>Password:</b></td>
+                      <td valign="top">
+                        <input type="password" name="password" size="30" />
+                      </td>
+                    </tr>
+
+                    <!-- Confirm Password -->
+                    <tr>
+                      <td align="right" valign="top">
+                        <b>Confirm Password:</b>
+                      </td>
+                      <td valign="top">
+                        <input
+                          type="password"
+                          name="confirm_password"
+                          size="30"
+                        />
+                      </td>
+                    </tr>
+
+                    <!-- Country -->
+                    <tr>
+                      <td align="right" valign="top"><b>Country:</b></td>
+                      <td valign="top">
+                        <select name="country">
+                          <option value="US">United States</option>
+                          <option value="UK">United Kingdom</option>
+                          <option value="CA">Canada</option>
+                          <option value="AU">Australia</option>
+                          <option value="JP">Japan</option>
+                          <option value="DE">Germany</option>
+                          <option value="FR">France</option>
+                          <option value="--">---</option>
+                          <option value="OT">Other</option>
+                        </select>
+                      </td>
+                    </tr>
+
+                    <!-- Postal Code -->
+                    <tr>
+                      <td align="right" valign="top"><b>Postal Code:</b></td>
+                      <td valign="top">
+                        <input type="text" name="postal_code" size="10" />
+                        <div style="font-size: 10px; color: #444">
+                          Required for US, UK & Canada Only
+                        </div>
+                      </td>
+                    </tr>
+
+                    <!-- Gender -->
+                    <tr>
+                      <td align="right" valign="top"><b>Gender:</b></td>
+                      <td valign="top">
+                        <input
+                          type="radio"
+                          name="gender"
+                          value="m"
+                          id="gender_m"
+                        /><label for="gender_m">Male</label>
+                        <input
+                          type="radio"
+                          name="gender"
+                          value="f"
+                          id="gender_f"
+                        /><label for="gender_f">Female</label>
+                      </td>
+                    </tr>
+
+                    <!-- Date of Birth -->
+                    <tr>
+                      <td align="right" valign="top"><b>Date of Birth:</b></td>
+                      <td valign="top">
+                        <select name="dob_month">
+                          <option value="">---</option>
+                          <option value="1">Jan</option>
+                          <option value="2">Feb</option>
+                          <option value="3">Mar</option>
+                          <option value="4">Apr</option>
+                          <option value="5">May</option>
+                          <option value="6">Jun</option>
+                          <option value="7">Jul</option>
+                          <option value="8">Aug</option>
+                          <option value="9">Sep</option>
+                          <option value="10">Oct</option>
+                          <option value="11">Nov</option>
+                          <option value="12">Dec</option>
+                        </select>
+                        <select name="dob_day">
+                          <option value="">---</option>
+                          <% for(var i=1; i<=31; i++) { %>
+                          <option value="<%= i %>"><%= i %></option>
+                          <% } %>
+                        </select>
+                        <select name="dob_year">
+                          <option value="">---</option>
+                          <% for(var i=2006; i>=1900; i--) { %>
+                          <option value="<%= i %>"><%= i %></option>
+                          <% } %>
+                        </select>
+                      </td>
+                    </tr>
+
+                    <!-- Verification (Mock) -->
+                    <tr>
+                      <td align="right" valign="top"><b>Verification:</b></td>
+                      <td valign="top">
+                        <div
+                          style="
+                            border: 1px solid #999;
+                            background: #e5e5e5;
+                            width: 120px;
+                            height: 40px;
+                            text-align: center;
+                            line-height: 40px;
+                            font-family: monospace;
+                            font-size: 20px;
+                            letter-spacing: 3px;
+                          "
+                        >
+                          XP17S
+                        </div>
+                        <a href="#" style="font-size: 10px">Can't read?</a
+                        ><br />
+                        <input
+                          type="text"
+                          name="captcha"
+                          size="10"
+                          style="margin-top: 5px"
+                        />
+                        <div style="font-size: 10px; color: #444">
+                          Enter the text in the image
+                        </div>
+                      </td>
+                    </tr>
+
+                    <tr>
+                      <td colspan="2" height="10"></td>
+                    </tr>
+
+                    <!-- Terms -->
+                    <tr>
+                      <td align="right" valign="top">
+                        <input
+                          type="checkbox"
+                          name="email_list"
+                          value="1"
+                          checked
+                        />
+                      </td>
+                      <td valign="top">
+                        <label
+                          >Sign me up for the "Broadcast Yourself" email</label
+                        >
+                      </td>
+                    </tr>
+                    <tr>
+                      <td align="right" valign="top">
+                        <input
+                          type="checkbox"
+                          name="terms"
+                          value="1"
+                          id="terms_check"
+                        />
+                      </td>
+                      <td valign="top">
+                        <label for="terms_check"
+                          >I agree to the <a href="#">terms of use</a> and
+                          <a href="#">privacy policy</a>.</label
+                        >
+                      </td>
+                    </tr>
+
+                    <tr>
+                      <td>&nbsp;</td>
+                      <td>
+                        <br />
+                        <input
+                          type="submit"
+                          value="Sign Up"
+                          style="
+                            font-weight: bold;
+                            font-size: 14px;
+                            padding: 2px 10px;
+                          "
+                        />
+                      </td>
+                    </tr>
+                  </table>
+                </form>
+              </div>
+            </td>
+
+            <!-- Right Column: Info & Login -->
+            <td width="30%" valign="top">
+              <div
+                style="font-size: 16px; font-weight: bold; margin-bottom: 10px"
+              >
+                What Is YouTube?
+              </div>
+              <div style="font-size: 12px; margin-bottom: 20px">
+                YouTube is the home for video online:
+                <ul style="padding-left: 20px; margin-top: 5px">
+                  <li><b>Watch</b> millions of videos</li>
+                  <li><b>Share favorites</b> with friends and family</li>
+                  <li>
+                    <b>Connect with other users</b> who share your interests
+                  </li>
+                  <li><b>Upload your videos</b> to a worldwide audience</li>
+                </ul>
+                <b>Sign up now to join the YouTube community!</b>
+              </div>
+
+              <div
+                style="font-size: 16px; font-weight: bold; margin-bottom: 10px"
+              >
+                Member Login
+              </div>
+              <div style="font-size: 11px; margin-bottom: 10px">
+                Already have a YouTube account? Login here.
+              </div>
+
+              <div
+                style="
+                  background-color: #eeeeee;
+                  border: 1px solid #cccccc;
+                  padding: 10px;
+                "
+              >
+                <form action="/login" method="post">
+                  <table
+                    border="0"
+                    cellspacing="0"
+                    cellpadding="2"
+                    width="100%"
+                  >
+                    <tr>
+                      <td align="right" style="font-size: 11px">
+                        <b>YouTube Username:</b>
+                      </td>
+                      <td>
+                        <input
+                          type="text"
+                          name="username"
+                          size="15"
+                          style="width: 120px"
+                        />
+                      </td>
+                    </tr>
+                    <tr>
+                      <td align="right" style="font-size: 11px">
+                        <b>YouTube Password:</b>
+                      </td>
+                      <td>
+                        <input
+                          type="password"
+                          name="password"
+                          size="15"
+                          style="width: 120px"
+                        />
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>&nbsp;</td>
+                      <td>
+                        <input
+                          type="submit"
+                          value="Log In"
+                          style="font-weight: bold; font-size: 11px"
+                        />
+                      </td>
+                    </tr>
+                    <tr>
+                      <td
+                        colspan="2"
+                        align="center"
+                        style="font-size: 10px; padding-top: 5px"
+                      >
+                        <a href="#">Forgot Username</a> |
+                        <a href="#">Forgot Password</a>
+                      </td>
+                    </tr>
+                  </table>
+                </form>
+              </div>
+            </td>
+          </tr>
+        </table>
+
+        <br /><br />
+        <div align="center" class="footer">&copy; 2025 98Tuber</div>
+      </div>
+    </div>
+  </body>
+</html>

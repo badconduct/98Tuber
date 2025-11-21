@@ -5,21 +5,29 @@
 </div>
 
 <div id="utilDiv">
-  <b><a href="/signup">Sign Up</a></b>
+  <% if (typeof user !== 'undefined' && user) { %>
+  <b>Hello, <a href="/my_account"><%= user.username %></a></b>
   <span class="utilDelim">|</span>
   <a href="/my_account">My Account</a>
   <span class="utilDelim">|</span>
   <a href="/history">History</a>
   <span class="utilDelim">|</span>
-  <a href="/quicklist">QuickList</a> (<a
-    href="/quicklist"
-    id="quicklist_nav_count"
-    >0</a
-  >)
+  <a href="/my_account">QuickList</a>
+  <span class="utilDelim">|</span>
+  <a href="/help">Help</a>
+  <span class="utilDelim">|</span>
+  <a href="/logout">Log Out</a>
+  <% } else { %>
+  <b><a href="/signup">Sign Up</a></b>
+  <span class="utilDelim">|</span>
+  <a href="/login">My Account</a>
+  <span class="utilDelim">|</span>
+  <a href="/history">History</a>
   <span class="utilDelim">|</span>
   <a href="/help">Help</a>
   <span class="utilDelim">|</span>
   <a href="/login">Log In</a>
+  <% } %>
 </div>
 
 <div id="searchDiv">

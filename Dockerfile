@@ -10,6 +10,8 @@ COPY package*.json ./
 
 # Install dependencies
 # We include optional dependencies because 'sharp' needs platform-specific binaries (linuxmusl)
+# Install nodemon globally to ensure it's available in the path, avoiding issues with volume mounting
+RUN npm install -g nodemon
 RUN npm install
 
 COPY . .

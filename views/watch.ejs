@@ -221,7 +221,7 @@
 					<tr valign="top">
 						<td width="30%">
 							<div style="font-size: 11px; margin-bottom: 2px;"><a href="#" class="noul">Login</a> to rate</div>
-							<span class="rating" style="color: #CC6600; font-size: 16px;">&#9733;&#9733;&#9733;&#9733;&#9733;</span>
+							<img src="/images/star.gif" border="0"><img src="/images/star.gif" border="0"><img src="/images/star.gif" border="0"><img src="/images/star.gif" border="0"><img src="/images/star.gif" border="0">
 							<div style="font-size: 10px;"><%= Math.floor(Math.random() * 5000) %> ratings</div>
 						</td>
 						<td align="center" style="font-size: 11px;">
@@ -229,12 +229,42 @@
 								<tr>
 									<td align="left" style="padding-bottom: 3px;">
 										<img src="/images/icon_favorites.gif" height="12" align="absmiddle" border="0" style="vertical-align: middle; margin-right: 3px;">
-										<a href="#" class="noul"><span class="eLink">Save to Favorites</span></a>
+                                        <% if (typeof isFavorite !== 'undefined' && isFavorite) { %>
+                                            <form action="/favorites/remove" method="post" style="display:inline;">
+                                                <input type="hidden" name="video_id" value="<%= videoId %>">
+                                                <input type="submit" value="Remove Favorite" style="font-size: 11px; border: 0; background: none; color: #0033CC; text-decoration: underline; cursor: pointer; padding: 0; font-family: Arial, Helvetica, sans-serif;">
+                                            </form>
+                                        <% } else { %>
+                                            <form action="/favorites/add" method="post" style="display:inline;">
+                                                <input type="hidden" name="video_id" value="<%= videoId %>">
+                                                <input type="hidden" name="title" value="<%= video.snippet.title %>">
+                                                <input type="hidden" name="channel_title" value="<%= video.snippet.channelTitle %>">
+                                                <input type="hidden" name="thumbnail" value="<%= video.snippet.thumbnails.default.url %>">
+                                                <input type="hidden" name="duration" value="<%= video.formattedDuration %>">
+                                                <input type="hidden" name="view_count" value="<%= video.formattedViews %>">
+                                                <input type="submit" value="Save to Favorites" style="font-size: 11px; border: 0; background: none; color: #0033CC; text-decoration: underline; cursor: pointer; padding: 0; font-family: Arial, Helvetica, sans-serif;">
+                                            </form>
+                                        <% } %>
 									</td>
 									<td width="10"></td>
 									<td align="left" style="padding-bottom: 3px;">
 										<img src="/images/icon_groups.gif" height="12" align="absmiddle" border="0" style="vertical-align: middle; margin-right: 3px;">
-										<a href="#" class="noul"><span class="eLink">Add to Groups</span></a>
+                                        <% if (typeof inQuicklist !== 'undefined' && inQuicklist) { %>
+                                            <form action="/quicklist/remove" method="post" style="display:inline;">
+                                                <input type="hidden" name="video_id" value="<%= videoId %>">
+                                                <input type="submit" value="Remove QuickList" style="font-size: 11px; border: 0; background: none; color: #0033CC; text-decoration: underline; cursor: pointer; padding: 0; font-family: Arial, Helvetica, sans-serif;">
+                                            </form>
+                                        <% } else { %>
+                                            <form action="/quicklist/add" method="post" style="display:inline;">
+                                                <input type="hidden" name="video_id" value="<%= videoId %>">
+                                                <input type="hidden" name="title" value="<%= video.snippet.title %>">
+                                                <input type="hidden" name="channel_title" value="<%= video.snippet.channelTitle %>">
+                                                <input type="hidden" name="thumbnail" value="<%= video.snippet.thumbnails.default.url %>">
+                                                <input type="hidden" name="duration" value="<%= video.formattedDuration %>">
+                                                <input type="hidden" name="view_count" value="<%= video.formattedViews %>">
+                                                <input type="submit" value="Add to QuickList" style="font-size: 11px; border: 0; background: none; color: #0033CC; text-decoration: underline; cursor: pointer; padding: 0; font-family: Arial, Helvetica, sans-serif;">
+                                            </form>
+                                        <% } %>
 									</td>
 								</tr>
 								<tr>

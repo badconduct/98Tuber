@@ -14,6 +14,9 @@ try {
 const { PassThrough } = require("stream");
 const sharp = require("sharp");
 const https = require("https");
+const { Pool } = require("pg");
+const session = require("express-session");
+const bcrypt = require("bcrypt");
 
 dotenv.config();
 
@@ -21,6 +24,328 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const CACHE_DIR = path.join(__dirname, "cache");
 const transcodingProgress = new Map();
+
+// Database Configuration
+const pool = new Pool({
+  user: process.env.DB_USER || "tuber",
+  host: process.env.DB_HOST || "db",
+  database: process.env.DB_NAME || "tuberdb",
+  password: process.env.DB_PASS || "tuberpassword",
+  port: 5432,
+});
+
+// Session Configuration
+app.use(
+  session({
+    secret: "98tuber-secret-key",
+    resave: false,
+    saveUninitialized: false,
+    cookie: { secure: false }, // Set to true if using HTTPS
+  })
+);
+
+// Parse form data
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+
+// Initialize Database Schema
+async function initDB() {
+  try {
+    const client = await pool.connect();
+    try {
+      // Users Table
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS users (
+          id SERIAL PRIMARY KEY,
+          username VARCHAR(50) UNIQUE NOT NULL,
+          password VARCHAR(255) NOT NULL,
+          email VARCHAR(100),
+          country VARCHAR(5),
+          gender VARCHAR(1),
+          dob DATE,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
+      // Add columns if they don't exist (for existing DBs)
+      await client.query(`
+        DO $$ 
+        BEGIN 
+          BEGIN
+            ALTER TABLE users ADD COLUMN email VARCHAR(100);
+          EXCEPTION
+            WHEN duplicate_column THEN NULL;
+          END;
+          BEGIN
+            ALTER TABLE users ADD COLUMN country VARCHAR(5);
+          EXCEPTION
+            WHEN duplicate_column THEN NULL;
+          END;
+          BEGIN
+            ALTER TABLE users ADD COLUMN gender VARCHAR(1);
+          EXCEPTION
+            WHEN duplicate_column THEN NULL;
+          END;
+          BEGIN
+            ALTER TABLE users ADD COLUMN dob DATE;
+          EXCEPTION
+            WHEN duplicate_column THEN NULL;
+          END;
+        END $$;
+      `);
+
+      // History Table
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS history (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER REFERENCES users(id),
+          video_id VARCHAR(20) NOT NULL,
+          title TEXT,
+          channel_title TEXT,
+          thumbnail TEXT,
+          duration VARCHAR(20),
+          view_count VARCHAR(20),
+          watched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(user_id, video_id)
+        );
+      `);
+
+      // Favorites Table
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS favorites (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER REFERENCES users(id),
+          video_id VARCHAR(20) NOT NULL,
+          title TEXT,
+          channel_title TEXT,
+          thumbnail TEXT,
+          duration VARCHAR(20),
+          view_count VARCHAR(20),
+          added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(user_id, video_id)
+        );
+      `);
+
+      // QuickList Table
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS quicklist (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER REFERENCES users(id),
+          video_id VARCHAR(20) NOT NULL,
+          title TEXT,
+          channel_title TEXT,
+          thumbnail TEXT,
+          duration VARCHAR(20),
+          view_count VARCHAR(20),
+          added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(user_id, video_id)
+        );
+      `);
+
+      console.log("Database initialized successfully");
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    console.error("Error initializing database:", err);
+    // Retry after 5 seconds if DB is not ready
+    setTimeout(initDB, 5000);
+  }
+}
+
+initDB();
+
+// Middleware to make user available in views
+app.use((req, res, next) => {
+  res.locals.user = req.session.user;
+  next();
+});
+
+// --- AUTH ROUTES ---
+
+app.get("/signup", (req, res) => {
+  res.render("signup");
+});
+
+app.post("/signup", async (req, res) => {
+  const {
+    username,
+    password,
+    confirm_password,
+    email,
+    country,
+    gender,
+    dob_month,
+    dob_day,
+    dob_year,
+  } = req.body;
+
+  if (!username || !password || !email) {
+    return res.render("signup", {
+      error: "Username, password, and email are required.",
+    });
+  }
+
+  if (password !== confirm_password) {
+    return res.render("signup", { error: "Passwords do not match." });
+  }
+
+  let dob = null;
+  if (dob_year && dob_month && dob_day) {
+    dob = `${dob_year}-${dob_month}-${dob_day}`;
+  }
+
+  try {
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const result = await pool.query(
+      "INSERT INTO users (username, password, email, country, gender, dob) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, username",
+      [username, hashedPassword, email, country, gender, dob]
+    );
+    req.session.user = result.rows[0];
+    res.redirect("/");
+  } catch (err) {
+    console.error("Signup error:", err);
+    res.render("signup", {
+      error: "Username already taken or error occurred.",
+    });
+  }
+});
+
+app.get("/login", (req, res) => {
+  res.render("login");
+});
+
+app.post("/login", async (req, res) => {
+  const { username, password } = req.body;
+  try {
+    const result = await pool.query("SELECT * FROM users WHERE username = $1", [
+      username,
+    ]);
+    if (result.rows.length > 0) {
+      const user = result.rows[0];
+      const match = await bcrypt.compare(password, user.password);
+      if (match) {
+        req.session.user = { id: user.id, username: user.username };
+        return res.redirect("/");
+      }
+    }
+    res.render("login", { error: "Invalid credentials." });
+  } catch (err) {
+    console.error("Login error:", err);
+    res.render("login", { error: "Login failed." });
+  }
+});
+
+app.get("/logout", (req, res) => {
+  req.session.destroy();
+  res.redirect("/");
+});
+
+// --- ACCOUNT ROUTES ---
+
+app.get("/my_account", async (req, res) => {
+  if (!req.session.user) return res.redirect("/login");
+  try {
+    const favorites = await pool.query(
+      "SELECT * FROM favorites WHERE user_id = $1 ORDER BY added_at DESC",
+      [req.session.user.id]
+    );
+    const quicklist = await pool.query(
+      "SELECT * FROM quicklist WHERE user_id = $1 ORDER BY added_at DESC",
+      [req.session.user.id]
+    );
+    res.render("my_account", {
+      favorites: favorites.rows,
+      quicklist: quicklist.rows,
+      page: "home",
+    });
+  } catch (err) {
+    console.error("My Account error:", err);
+    res.redirect("/");
+  }
+});
+
+app.post("/favorites/add", async (req, res) => {
+  if (!req.session.user) return res.status(401).send("Login required");
+  const { video_id, title, channel_title, thumbnail, duration, view_count } =
+    req.body;
+  try {
+    await pool.query(
+      `INSERT INTO favorites (user_id, video_id, title, channel_title, thumbnail, duration, view_count)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       ON CONFLICT (user_id, video_id) DO NOTHING`,
+      [
+        req.session.user.id,
+        video_id,
+        title,
+        channel_title,
+        thumbnail,
+        duration,
+        view_count,
+      ]
+    );
+    res.redirect("back");
+  } catch (err) {
+    console.error("Add Favorite error:", err);
+    res.redirect("back");
+  }
+});
+
+app.post("/favorites/remove", async (req, res) => {
+  if (!req.session.user) return res.status(401).send("Login required");
+  const { video_id } = req.body;
+  try {
+    await pool.query(
+      "DELETE FROM favorites WHERE user_id = $1 AND video_id = $2",
+      [req.session.user.id, video_id]
+    );
+    res.redirect("back");
+  } catch (err) {
+    console.error("Remove Favorite error:", err);
+    res.redirect("back");
+  }
+});
+
+app.post("/quicklist/add", async (req, res) => {
+  if (!req.session.user) return res.status(401).send("Login required");
+  const { video_id, title, channel_title, thumbnail, duration, view_count } =
+    req.body;
+  try {
+    await pool.query(
+      `INSERT INTO quicklist (user_id, video_id, title, channel_title, thumbnail, duration, view_count)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       ON CONFLICT (user_id, video_id) DO NOTHING`,
+      [
+        req.session.user.id,
+        video_id,
+        title,
+        channel_title,
+        thumbnail,
+        duration,
+        view_count,
+      ]
+    );
+    res.redirect("back");
+  } catch (err) {
+    console.error("Add Quicklist error:", err);
+    res.redirect("back");
+  }
+});
+
+app.post("/quicklist/remove", async (req, res) => {
+  if (!req.session.user) return res.status(401).send("Login required");
+  const { video_id } = req.body;
+  try {
+    await pool.query(
+      "DELETE FROM quicklist WHERE user_id = $1 AND video_id = $2",
+      [req.session.user.id, video_id]
+    );
+    res.redirect("back");
+  } catch (err) {
+    console.error("Remove Quicklist error:", err);
+    res.redirect("back");
+  }
+});
 
 // Simple In-Memory Cache
 const apiCache = {
@@ -548,32 +873,76 @@ app.get("/watch", async (req, res) => {
       : "0";
 
     // --- HISTORY LOGIC START ---
-    // Create a simplified video object for history
-    const historyItem = {
-      id: video.id,
-      title: video.snippet.title,
-      description: video.snippet.description,
-      thumbnail: video.snippet.thumbnails.medium
-        ? video.snippet.thumbnails.medium.url
-        : video.snippet.thumbnails.default.url,
-      channelTitle: video.snippet.channelTitle,
-      viewCount: video.formattedViews,
-      publishedAt: video.snippet.publishedAt,
-      relativeDate: video.relativeDate,
-      duration: video.formattedDuration,
-    };
+    if (req.session.user) {
+      // DB History
+      try {
+        await pool.query(
+          `INSERT INTO history (user_id, video_id, title, channel_title, thumbnail, duration, view_count)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)
+           ON CONFLICT (user_id, video_id) DO UPDATE SET watched_at = CURRENT_TIMESTAMP`,
+          [
+            req.session.user.id,
+            video.id,
+            video.snippet.title,
+            video.snippet.channelTitle,
+            video.snippet.thumbnails.medium
+              ? video.snippet.thumbnails.medium.url
+              : video.snippet.thumbnails.default.url,
+            video.formattedDuration,
+            video.formattedViews,
+          ]
+        );
+      } catch (err) {
+        console.error("Error saving history:", err);
+      }
+    } else {
+      // Create a simplified video object for history
+      const historyItem = {
+        id: video.id,
+        title: video.snippet.title,
+        description: video.snippet.description,
+        thumbnail: video.snippet.thumbnails.medium
+          ? video.snippet.thumbnails.medium.url
+          : video.snippet.thumbnails.default.url,
+        channelTitle: video.snippet.channelTitle,
+        viewCount: video.formattedViews,
+        publishedAt: video.snippet.publishedAt,
+        relativeDate: video.relativeDate,
+        duration: video.formattedDuration,
+      };
 
-    // Remove if already exists (to move it to the top)
-    historyCache = historyCache.filter((item) => item.id !== video.id);
+      // Remove if already exists (to move it to the top)
+      historyCache = historyCache.filter((item) => item.id !== video.id);
 
-    // Add to top
-    historyCache.unshift(historyItem);
+      // Add to top
+      historyCache.unshift(historyItem);
 
-    // Keep only last 10
-    if (historyCache.length > 10) {
-      historyCache.pop();
+      // Keep only last 10
+      if (historyCache.length > 10) {
+        historyCache.pop();
+      }
     }
     // --- HISTORY LOGIC END ---
+
+    // Check Favorites/Quicklist status
+    let isFavorite = false;
+    let inQuicklist = false;
+    if (req.session.user) {
+      try {
+        const favCheck = await pool.query(
+          "SELECT 1 FROM favorites WHERE user_id = $1 AND video_id = $2",
+          [req.session.user.id, videoId]
+        );
+        isFavorite = favCheck.rows.length > 0;
+        const qlCheck = await pool.query(
+          "SELECT 1 FROM quicklist WHERE user_id = $1 AND video_id = $2",
+          [req.session.user.id, videoId]
+        );
+        inQuicklist = qlCheck.rows.length > 0;
+      } catch (err) {
+        console.error("Error checking fav/ql status:", err);
+      }
+    }
 
     // 2. Fetch Related Videos
     let relatedVideos = [];
@@ -625,6 +994,8 @@ app.get("/watch", async (req, res) => {
       videoId,
       duration,
       page: "watch",
+      isFavorite,
+      inQuicklist,
     });
   } catch (error) {
     console.error("Error loading video:", error);
@@ -633,9 +1004,28 @@ app.get("/watch", async (req, res) => {
 });
 
 // New History Route
-app.get("/history", (req, res) => {
+app.get("/history", async (req, res) => {
+  let videos = [];
+  if (req.session.user) {
+    try {
+      const result = await pool.query(
+        'SELECT video_id as id, title, channel_title as "channelTitle", thumbnail, duration, view_count as "viewCount", watched_at FROM history WHERE user_id = $1 ORDER BY watched_at DESC LIMIT 50',
+        [req.session.user.id]
+      );
+      videos = result.rows.map((v) => ({
+        ...v,
+        relativeDate: getRelativeTime(v.watched_at),
+        description: "", // DB doesn't store description
+      }));
+    } catch (err) {
+      console.error("History fetch error:", err);
+    }
+  } else {
+    videos = historyCache;
+  }
+
   res.render("history", {
-    videos: historyCache,
+    videos: videos,
     page: "home", // History is a sub-feature of Home/My Account
   });
 });
