@@ -41,7 +41,7 @@ app.use(
     resave: false,
     saveUninitialized: false,
     cookie: { secure: false }, // Set to true if using HTTPS
-  })
+  }),
 );
 
 // Parse form data
@@ -199,7 +199,7 @@ app.post("/signup", async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
     const result = await pool.query(
       "INSERT INTO users (username, password, email, country, gender, dob) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, username",
-      [username, hashedPassword, email, country, gender, dob]
+      [username, hashedPassword, email, country, gender, dob],
     );
     req.session.user = result.rows[0];
     res.redirect("/");
@@ -248,11 +248,11 @@ app.get("/my_account", async (req, res) => {
   try {
     const favorites = await pool.query(
       "SELECT * FROM favorites WHERE user_id = $1 ORDER BY added_at DESC",
-      [req.session.user.id]
+      [req.session.user.id],
     );
     const quicklist = await pool.query(
       "SELECT * FROM quicklist WHERE user_id = $1 ORDER BY added_at DESC",
-      [req.session.user.id]
+      [req.session.user.id],
     );
     res.render("my_account", {
       favorites: favorites.rows,
@@ -282,7 +282,7 @@ app.post("/favorites/add", async (req, res) => {
         thumbnail,
         duration,
         view_count,
-      ]
+      ],
     );
     res.redirect("back");
   } catch (err) {
@@ -297,7 +297,7 @@ app.post("/favorites/remove", async (req, res) => {
   try {
     await pool.query(
       "DELETE FROM favorites WHERE user_id = $1 AND video_id = $2",
-      [req.session.user.id, video_id]
+      [req.session.user.id, video_id],
     );
     res.redirect("back");
   } catch (err) {
@@ -323,7 +323,7 @@ app.post("/quicklist/add", async (req, res) => {
         thumbnail,
         duration,
         view_count,
-      ]
+      ],
     );
     res.redirect("back");
   } catch (err) {
@@ -338,7 +338,7 @@ app.post("/quicklist/remove", async (req, res) => {
   try {
     await pool.query(
       "DELETE FROM quicklist WHERE user_id = $1 AND video_id = $2",
-      [req.session.user.id, video_id]
+      [req.session.user.id, video_id],
     );
     res.redirect("back");
   } catch (err) {
@@ -759,7 +759,7 @@ app.get("/videos", async (req, res) => {
         publishedAt: getRelativeTime(v.snippet.publishedAt),
         viewCount: formatViews(v.statistics.viewCount || 0),
         // Mock rating based on likes (just for visual)
-        rating: 5,
+        rating: (Math.random() * 2 + 3).toFixed(1), // Random rating between 3.0 and 5.0
       };
     });
 
@@ -860,7 +860,7 @@ app.get("/watch", async (req, res) => {
     video.formattedViews = formatViews(video.statistics.viewCount || 0);
     video.relativeDate = getRelativeTime(video.snippet.publishedAt);
     video.formattedDate = new Date(
-      video.snippet.publishedAt
+      video.snippet.publishedAt,
     ).toLocaleDateString("en-US", {
       year: "numeric",
       month: "long",
@@ -890,7 +890,7 @@ app.get("/watch", async (req, res) => {
               : video.snippet.thumbnails.default.url,
             video.formattedDuration,
             video.formattedViews,
-          ]
+          ],
         );
       } catch (err) {
         console.error("Error saving history:", err);
@@ -931,12 +931,12 @@ app.get("/watch", async (req, res) => {
       try {
         const favCheck = await pool.query(
           "SELECT 1 FROM favorites WHERE user_id = $1 AND video_id = $2",
-          [req.session.user.id, videoId]
+          [req.session.user.id, videoId],
         );
         isFavorite = favCheck.rows.length > 0;
         const qlCheck = await pool.query(
           "SELECT 1 FROM quicklist WHERE user_id = $1 AND video_id = $2",
-          [req.session.user.id, videoId]
+          [req.session.user.id, videoId],
         );
         inQuicklist = qlCheck.rows.length > 0;
       } catch (err) {
@@ -1010,7 +1010,7 @@ app.get("/history", async (req, res) => {
     try {
       const result = await pool.query(
         'SELECT video_id as id, title, channel_title as "channelTitle", thumbnail, duration, view_count as "viewCount", watched_at FROM history WHERE user_id = $1 ORDER BY watched_at DESC LIMIT 50',
-        [req.session.user.id]
+        [req.session.user.id],
       );
       videos = result.rows.map((v) => ({
         ...v,
@@ -1159,13 +1159,13 @@ app.get("/comments/:videoId", async (req, res) => {
 
     const comments = response.data.items.map((item) => ({
       author: decodeHtml(
-        item.snippet.topLevelComment.snippet.authorDisplayName
+        item.snippet.topLevelComment.snippet.authorDisplayName,
       ),
       text: escapeHtml(
-        decodeHtml(item.snippet.topLevelComment.snippet.textDisplay)
+        decodeHtml(item.snippet.topLevelComment.snippet.textDisplay),
       ).replace(/\n/g, "<br>"),
       date: new Date(
-        item.snippet.topLevelComment.snippet.publishedAt
+        item.snippet.topLevelComment.snippet.publishedAt,
       ).toLocaleDateString(),
     }));
 
@@ -1221,7 +1221,7 @@ app.get("/stream/:videoId", async (req, res) => {
   }
 
   console.log(
-    `[${new Date().toLocaleTimeString()}] Starting transcode for ${videoId}...`
+    `[${new Date().toLocaleTimeString()}] Starting transcode for ${videoId}...`,
   );
   transcodingProgress.set(videoId, { percent: 0, status: "processing" });
 
@@ -1263,7 +1263,7 @@ app.get("/stream/:videoId", async (req, res) => {
         const currentTime = hours * 3600 + mins * 60 + secs;
         const percent = Math.min(
           99,
-          Math.round((currentTime / duration) * 100)
+          Math.round((currentTime / duration) * 100),
         );
 
         // Log progress every 10% to avoid spamming console

@@ -90,8 +90,20 @@
                       %><br />
                     </div>
                     <nobr>
-                      <% for(let i=0; i<5; i++) { %>
-                      <img src="/images/star.gif" border="0" />
+                      <% 
+                        var score = parseFloat(video.rating);
+                        var fullStars = Math.floor(score);
+                        var halfStar = (score - fullStars) >= 0.5 ? 1 : 0;
+                        var emptyStars = 5 - fullStars - halfStar;
+                      %>
+                      <% for(let i=0; i<fullStars; i++) { %>
+                        <img src="/images/star_sm.gif" border="0" />
+                      <% } %>
+                      <% if(halfStar) { %>
+                        <img src="/images/star_sm_half.gif" border="0" />
+                      <% } %>
+                      <% for(let i=0; i<emptyStars; i++) { %>
+                        <img src="/images/star_sm_bg.gif" border="0" />
                       <% } %>
                     </nobr>
                     <div class="rating">
