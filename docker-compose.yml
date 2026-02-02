@@ -1,5 +1,3 @@
-version: "3"
-
 services:
   98tuber:
     build: .

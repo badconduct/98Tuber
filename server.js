@@ -817,7 +817,8 @@ app.get("/search", async (req, res) => {
           duration: formatDuration(durationSec),
           publishedAt: getRelativeTime(v.snippet.publishedAt),
           viewCount: formatViews(v.statistics.viewCount || 0),
-          rating: Math.floor(Math.random() * 5000) + 500, // Mock rating count
+          rating: (Math.random() * 2 + 3).toFixed(1),
+          ratingCount: Math.floor(Math.random() * 5000) + 500,
         };
       });
     }
@@ -871,6 +872,7 @@ app.get("/watch", async (req, res) => {
     video.commentCount = video.statistics.commentCount
       ? parseInt(video.statistics.commentCount).toLocaleString()
       : "0";
+    video.rating = (Math.random() * 2 + 3).toFixed(1);
 
     // --- HISTORY LOGIC START ---
     if (req.session.user) {
@@ -1246,6 +1248,10 @@ app.get("/stream/:videoId", async (req, res) => {
       "-", // Input from stdin
       "-target",
       "ntsc-vcd", // VCD standard (MPEG-1, 352x240, 1150k video, 224k audio)
+      "-acodec",
+      "libmp3lame", // Use MP3 for better quality audio
+      "-ab",
+      "192k", // 192k bitrate
       "-ac",
       "2", // Stereo audio
       "-ar",

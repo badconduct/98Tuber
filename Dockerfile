@@ -1,8 +1,8 @@
 FROM node:22-alpine
 
-# Install FFmpeg (required for transcoding)
+# Install FFmpeg (required for transcoding) and upgrade system packages for security
 # We use the alpine package instead of ffmpeg-static to keep the image smaller and compatible
-RUN apk add --no-cache ffmpeg
+RUN apk update && apk upgrade --no-cache && apk add --no-cache ffmpeg openssl
 
 WORKDIR /app
 
