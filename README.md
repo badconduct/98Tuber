@@ -1,76 +1,54 @@
-# 98Tuber - Retro YouTube Proxy
+# 98Tuber viewer
 
-A Node.js server that acts as a bridge between modern YouTube and Windows 98 / Internet Explorer 6. It recreates the look and feel of YouTube circa 2006.
+98Tuber is a LAN-only, HTTP viewer for Windows 98SE and IE6. It searches
+YouTube through the YouTube Data API, converts an explicitly requested video
+to MPEG-1/VCD, and serves the result to Windows Media Player 6.4.
 
-## Features
+It is deliberately viewer-only. Accounts, favorites, comments, uploads, the
+legacy PostgreSQL sidecar, and old cached videos are not part of Dockernet.
 
-- **Proxy Server**: Fetches data from YouTube Data API v3.
-- **Transcoding**: Converts modern H.264/VP9 video to MPEG-1 (VCD) compatible with Windows Media Player 6.4.
-- **Retro Frontend**: HTML 4.01 strict templates designed for IE6.
-- **Caching**: Saves converted videos locally to avoid re-downloading.
-- **Pagination**: Browse through video results with IE6-compatible navigation.
-- **Docker Support**: Easily run the server in a containerized environment.
+## Runtime contract
 
-## Prerequisites
+- Intended URL: `http://youtube.98se.mowattech.ca/`.
+- HTTP is intentional for IE6 and permitted only on the trusted LAN. Do not
+  publish it to the Internet or use it for reusable credentials.
+- `YOUTUBE_API_KEY` is required at runtime and comes from a protected
+  Dockernet secret file; never Git, image layers, or labels.
+- `/data/cache` is persistent but regenerable. It is not backed up as user
+  data. The current Windows cache remains the rollback source.
+- One conversion runs at a time. The defaults limit input to 15 minutes and
+  output to 300 MiB, protecting Dockernet's A4-9120 CPU and SSD.
+- This service stays always on; Sablier is unsuitable for long transcodes.
 
-### Option A: Docker (Recommended)
+Only process content you are authorized to access, consistent with the
+upstream service's applicable terms.
 
-- **Docker Desktop**: Install Docker Desktop for Windows/Mac/Linux.
+## Local development
 
-### Option B: Manual Installation
+Create an ignored `.env`:
 
-1.  **Node.js**: Install Node.js (v14+ recommended).
-2.  **FFmpeg**:
-    - Download FFmpeg from [ffmpeg.org](https://ffmpeg.org/download.html).
-    - Add the `bin` folder to your system's **PATH**.
-    - Verify by running `ffmpeg -version`.
+```env
+YOUTUBE_API_KEY=replace-me
+```
 
-## Configuration
+```bash
+npm ci
+npm run check
+docker compose up --build
+```
 
-1.  **Get a YouTube API Key**:
+Open `http://127.0.0.1:3000/health/live`. A successful search verifies the
+API key and browse path; a small authorized video verifies conversion.
 
-    - Go to [Google Cloud Console](https://console.cloud.google.com/).
-    - Create a project and enable **YouTube Data API v3**.
-    - Create an API Key.
+## Delivery to Dockernet
 
-2.  **Create Environment File**:
-    - Create a file named `.env` in the root directory.
-    - Add the following content:
-      ```env
-      PORT=3000
-      YOUTUBE_API_KEY=your_actual_api_key_here
-      ```
+1. CI validates dependencies, syntax, vulnerabilities, and an image build.
+   Merge to `main` publishes a GHCR commit tag.
+2. Record the resulting immutable image digest.
+3. Promote that digest in a separate `dockernet-infra` pull request with the
+   role, route, secret playbook, inventory, runbook, and acceptance test.
+4. After merge, an operator runs the Ansible playbook twice from Debian WSL
+   and performs the Windows 98/IE6 acceptance test.
 
-## Running the Server
-
-### Using Docker
-
-1.  Build and start the container:
-    ```bash
-    docker-compose up -d --build
-    ```
-2.  The server will be running at `http://localhost:3000`.
-
-### Manual Run
-
-1.  Install dependencies:
-    ```bash
-    npm install
-    ```
-2.  Start the server:
-    ```bash
-    npm start
-    ```
-
-## Usage on Windows 98
-
-1.  Ensure the Windows 98 machine is on the same network as the host.
-2.  Open Internet Explorer 6.
-3.  Navigate to `http://<HOST_IP_ADDRESS>:3000`.
-4.  Search for a video or browse the homepage.
-5.  Click "Start Conversion" on a video page to transcode it for WMP 6.4.
-
-## Notes
-
-- The `cache` folder stores downloaded videos. It is ignored by git but will persist in Docker volumes or local storage.
-- The interface is designed for 800x600 or 1024x768 resolution.
+Publishing never deploys. The old Windows instance stays available through the
+reviewed rollback window.

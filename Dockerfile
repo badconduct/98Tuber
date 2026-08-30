@@ -1,23 +1,20 @@
-FROM node:22-alpine
+FROM node:24-bookworm-slim
 
-# Install FFmpeg (required for transcoding) and upgrade system packages for security
-# We use the alpine package instead of ffmpeg-static to keep the image smaller and compatible
-RUN apk update && apk upgrade --no-cache && apk add --no-cache ffmpeg openssl
+RUN apt-get update \
+    && apt-get install --no-install-recommends -y ffmpeg ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-
 COPY package*.json ./
+RUN npm ci --omit=dev && npm cache clean --force
+COPY --chown=node:node viewer-server.js ./
+COPY --chown=node:node public ./public
 
-# Install dependencies
-# We include optional dependencies because 'sharp' needs platform-specific binaries (linuxmusl)
-# Install nodemon globally to ensure it's available in the path, avoiding issues with volume mounting
-RUN npm install -g nodemon
-RUN npm install
-
-COPY . .
-
-# Expose the port
+USER node
+ENV NODE_ENV=production \
+    PORT=3000 \
+    APP_DATA_DIR=/data \
+    MAX_VIDEO_SECONDS=900 \
+    MAX_OUTPUT_BYTES=314572800
 EXPOSE 3000
-
-# Start the server
-CMD ["node", "server.js"]
+CMD ["node", "viewer-server.js"]
