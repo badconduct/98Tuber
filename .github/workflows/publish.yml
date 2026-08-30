@@ -28,9 +28,10 @@ jobs:
           push: false
           load: true
           tags: 98tuber:ci
-      - uses: aquasecurity/trivy-action@v0.33.1
+      - uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: 98tuber:ci
+          version: v0.74.0
           format: table
           exit-code: "1"
           ignore-unfixed: true
