@@ -2,26 +2,18 @@
   "name": "98tuber",
   "version": "1.0.0",
   "description": "YouTube proxy for Windows 98/IE6",
-  "main": "server.js",
+  "main": "viewer-server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js"
+    "start": "node viewer-server.js",
+    "dev": "node --watch viewer-server.js",
+    "check": "node --check viewer-server.js"
   },
   "dependencies": {
     "dotenv": "^16.3.1",
-    "ejs": "^3.1.9",
     "express": "^4.18.2",
-    "express-session": "^1.17.3",
-    "pg": "^8.11.3",
-    "bcrypt": "^5.1.1",
-    "ffmpeg-static": "^5.3.0",
-    "googleapis": "^126.0.1",
-    "jintr": "^3.3.1",
-    "sharp": "^0.34.5",
+    "googleapis": "^176.0.0",
+    "sharp": "^0.35.4",
     "youtubei.js": "^16.0.1"
-  },
-  "devDependencies": {
-    "nodemon": "^3.0.1"
   },
   "overrides": {
     "tar": "^7.5.7",

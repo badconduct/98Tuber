@@ -1,0 +1,70 @@
+name: validate-and-publish
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npm audit --omit=dev --audit-level=high
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          load: true
+          tags: 98tuber:ci
+      - run: >-
+          docker run --detach --name 98tuber-ci
+          --env YOUTUBE_API_KEY=ci-placeholder 98tuber:ci
+      - run: |
+          for attempt in {1..20}; do
+            if docker exec 98tuber-ci node -e "fetch('http://127.0.0.1:3000/health/live').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs 98tuber-ci
+          exit 1
+      - uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: 98tuber:ci
+          version: v0.74.0
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          severity: HIGH,CRITICAL
+      - if: always()
+        run: docker rm --force 98tuber-ci
+
+  publish:
+    if: github.event_name == 'push'
+    needs: validate
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/98tuber:sha-${{ github.sha }}
