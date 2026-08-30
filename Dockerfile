@@ -5,6 +5,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
+RUN npm install --global npm@12.0.2
 COPY package*.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 COPY --chown=node:node viewer-server.js ./
