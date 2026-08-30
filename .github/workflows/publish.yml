@@ -28,7 +28,7 @@ jobs:
           push: false
           load: true
           tags: 98tuber:ci
-      - uses: aquasecurity/trivy-action@0.33.1
+      - uses: aquasecurity/trivy-action@v0.33.1
         with:
           image-ref: 98tuber:ci
           format: table
