@@ -21,7 +21,7 @@ function createEvaluator(Jinter) {
       },
     });
     for (const [name, value] of Object.entries({
-      RegExp, String, Number, Array, Math, Date, JSON, Promise, Error, parseInt, parseFloat,
+      RegExp, String, Number, Array, Math, Date, JSON, Promise, Error, parseInt, parseFloat, console,
     })) interpreter.defineObject(name, value);
     return interpreter.evaluate(code);
   };

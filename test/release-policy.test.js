@@ -35,6 +35,7 @@ test("runtime supports file-mounted secrets and bounded cache", () => {
 test("youtubei media downloads have the required deciphering evaluator", () => {
   assert.match(youtubeClient, /Platform\.shim\.eval/);
   assert.match(youtubeClient, /new Jinter/);
+  assert.match(youtubeClient, /parseFloat, console/);
   assert.match(server, /getInnertube\(\)/);
   assert.match(dockerfile, /COPY --chown=node:node viewer-server\.js youtube-client\.js/);
 });
