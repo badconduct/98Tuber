@@ -31,10 +31,15 @@ jobs:
       - run: >-
           docker run --detach --name 98tuber-ci
           --env YOUTUBE_API_KEY=ci-placeholder 98tuber:ci
-      - run: >-
-          docker exec 98tuber-ci node -e
-          "fetch('http://127.0.0.1:3000/health/live').then((response) =>
-          process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"
+      - run: |
+          for attempt in {1..20}; do
+            if docker exec 98tuber-ci node -e "fetch('http://127.0.0.1:3000/health/live').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs 98tuber-ci
+          exit 1
       - uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: 98tuber:ci
