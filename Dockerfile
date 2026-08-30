@@ -1,3 +1,10 @@
+FROM node:24-bookworm-slim AS build
+
+WORKDIR /app
+RUN npm install --global npm@12.0.2
+COPY package*.json ./
+RUN npm ci --omit=dev && npm cache clean --force
+
 FROM node:24-bookworm-slim
 
 RUN apt-get update \
@@ -5,9 +12,9 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-RUN npm install --global npm@12.0.2
-COPY package*.json ./
-RUN npm ci --omit=dev && npm cache clean --force
+RUN rm -rf /usr/local/lib/node_modules/npm \
+    && rm -f /usr/local/bin/npm /usr/local/bin/npx
+COPY --from=build --chown=node:node /app/node_modules ./node_modules
 COPY --chown=node:node viewer-server.js ./
 COPY --chown=node:node public ./public
 
