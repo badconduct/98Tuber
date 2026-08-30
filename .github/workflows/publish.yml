@@ -28,6 +28,13 @@ jobs:
           push: false
           load: true
           tags: 98tuber:ci
+      - run: >-
+          docker run --detach --name 98tuber-ci
+          --env YOUTUBE_API_KEY=ci-placeholder 98tuber:ci
+      - run: >-
+          docker exec 98tuber-ci node -e
+          "fetch('http://127.0.0.1:3000/health/live').then((response) =>
+          process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"
       - uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: 98tuber:ci
@@ -36,6 +43,8 @@ jobs:
           exit-code: "1"
           ignore-unfixed: true
           severity: HIGH,CRITICAL
+      - if: always()
+        run: docker rm --force 98tuber-ci
 
   publish:
     if: github.event_name == 'push'

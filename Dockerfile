@@ -25,4 +25,6 @@ ENV NODE_ENV=production \
     MAX_VIDEO_SECONDS=900 \
     MAX_OUTPUT_BYTES=314572800
 EXPOSE 3000
+HEALTHCHECK --interval=15s --timeout=3s --start-period=5s --retries=4 \
+  CMD node -e "fetch('http://127.0.0.1:3000/health/live').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"
 CMD ["node", "viewer-server.js"]
