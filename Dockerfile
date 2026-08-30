@@ -17,6 +17,7 @@ RUN rm -rf /usr/local/lib/node_modules/npm \
 COPY --from=build --chown=node:node /app/node_modules ./node_modules
 COPY --chown=node:node viewer-server.js ./
 COPY --chown=node:node public ./public
+RUN mkdir /data && chown node:node /data
 
 USER node
 ENV NODE_ENV=production \
