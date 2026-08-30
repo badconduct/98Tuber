@@ -12,12 +12,17 @@ legacy PostgreSQL sidecar, and old cached videos are not part of Dockernet.
 - Intended URL: `http://youtube.98se.mowattech.ca/`.
 - HTTP is intentional for IE6 and permitted only on the trusted LAN. Do not
   publish it to the Internet or use it for reusable credentials.
-- `YOUTUBE_API_KEY` is required at runtime and comes from a protected
-  Dockernet secret file; never Git, image layers, or labels.
+- Production uses `YOUTUBE_API_KEY_FILE` with a read-only mounted secret.
+  `YOUTUBE_API_KEY` remains available only for local development. Setting both
+  is rejected; values never belong in Git, image layers, or labels.
 - `/data/cache` is persistent but regenerable. It is not backed up as user
   data. The current Windows cache remains the rollback source.
 - One conversion runs at a time. The defaults limit input to 15 minutes and
-  output to 300 MiB, protecting Dockernet's A4-9120 CPU and SSD.
+  output to 300 MiB. The derived cache is capped at 20 GiB and evicts its
+  oldest complete files before conversion, protecting the A4-9120 and SSD.
+- Media URL deciphering uses the application-provided Jinter evaluator required
+  by `youtubei.js`; a real authorized video remains part of deployment
+  acceptance because YouTube can change this interface independently of us.
 - This service stays always on; Sablier is unsuitable for long transcodes.
 
 Only process content you are authorized to access, consistent with the
@@ -33,7 +38,7 @@ YOUTUBE_API_KEY=replace-me
 
 ```bash
 npm ci
-npm run check
+npm test
 docker compose up --build
 ```
 
@@ -42,8 +47,9 @@ API key and browse path; a small authorized video verifies conversion.
 
 ## Delivery to Dockernet
 
-1. CI validates dependencies, syntax, vulnerabilities, and an image build.
-   Merge to `main` publishes a GHCR commit tag.
+1. CI scans Git history for secrets, validates dependencies and tests, builds
+   one image, smoke-tests it, and scans it for vulnerabilities. On `main`, that
+   exact local image is tagged and pushed to GHCR without rebuilding.
 2. Record the resulting immutable image digest.
 3. Promote that digest in a separate `dockernet-infra` pull request with the
    role, route, secret playbook, inventory, runbook, and acceptance test.

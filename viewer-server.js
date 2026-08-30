@@ -8,6 +8,7 @@ const { spawn } = require("child_process");
 const dotenv = require("dotenv");
 const { google } = require("googleapis");
 const sharp = require("sharp");
+const { getInnertube } = require("./youtube-client");
 
 dotenv.config();
 
@@ -17,6 +18,8 @@ const dataDir = process.env.APP_DATA_DIR || path.join(__dirname, "cache");
 const cacheDir = path.join(dataDir, "cache");
 const maxVideoSeconds = Number(process.env.MAX_VIDEO_SECONDS || 900);
 const maxOutputBytes = Number(process.env.MAX_OUTPUT_BYTES || 314572800);
+const maxCacheBytes = Number(process.env.MAX_CACHE_BYTES || 21474836480);
+const youtubeApiTimeoutMs = Number(process.env.YOUTUBE_API_TIMEOUT_MS || 15000);
 const videoIdPattern = /^[A-Za-z0-9_-]{6,20}$/;
 const thumbnailHosts = new Set([
   "i.ytimg.com",
@@ -26,14 +29,29 @@ const thumbnailHosts = new Set([
 ]);
 const progress = new Map();
 let activeVideoId = null;
+let activeFfmpeg = null;
+let activePartialPath = null;
 let youtubeReady = false;
 
-if (!process.env.YOUTUBE_API_KEY) {
-  throw new Error("YOUTUBE_API_KEY must be provided through the runtime secret.");
+function readRequiredSecret(name) {
+  const fileName = process.env[`${name}_FILE`];
+  if (fileName && process.env[name]) throw new Error(`Set only ${name}_FILE or ${name}, not both.`);
+  const value = fileName ? fs.readFileSync(fileName, "utf8").trim() : String(process.env[name] || "").trim();
+  if (!value) throw new Error(`${name}_FILE or ${name} must provide a non-empty value.`);
+  return value;
+}
+
+const youtubeApiKey = readRequiredSecret("YOUTUBE_API_KEY");
+if (![maxVideoSeconds, maxOutputBytes, maxCacheBytes, youtubeApiTimeoutMs].every(Number.isFinite) ||
+    maxVideoSeconds <= 0 || maxOutputBytes <= 0 || maxCacheBytes < maxOutputBytes || youtubeApiTimeoutMs <= 0) {
+  throw new Error("Conversion and cache limits must be positive, and MAX_CACHE_BYTES must cover MAX_OUTPUT_BYTES.");
 }
 fs.mkdirSync(cacheDir, { recursive: true });
+for (const name of fs.readdirSync(cacheDir).filter((entry) => entry.endsWith(".partial"))) {
+  fs.rmSync(path.join(cacheDir, name), { force: true });
+}
 
-const youtube = google.youtube({ version: "v3", auth: process.env.YOUTUBE_API_KEY });
+const youtube = google.youtube({ version: "v3", auth: youtubeApiKey });
 
 function escapeHtml(value) {
   return String(value || "")
@@ -59,6 +77,34 @@ function formatDuration(seconds) {
 
 function cachePath(videoId) {
   return path.join(cacheDir, `${videoId}.mpg`);
+}
+
+function partialCachePath(videoId) {
+  return path.join(cacheDir, `.${videoId}.partial`);
+}
+
+function reserveCacheSpace() {
+  const files = fs.readdirSync(cacheDir)
+    .filter((name) => name.endsWith(".mpg"))
+    .map((name) => {
+      const filePath = path.join(cacheDir, name);
+      return { filePath, ...fs.statSync(filePath) };
+    })
+    .sort((left, right) => left.mtimeMs - right.mtimeMs);
+  let total = files.reduce((sum, file) => sum + file.size, 0);
+  while (files.length && total + maxOutputBytes > maxCacheBytes) {
+    const oldest = files.shift();
+    fs.rmSync(oldest.filePath, { force: true });
+    total -= oldest.size;
+  }
+  if (total + maxOutputBytes > maxCacheBytes) throw new Error("Cache has insufficient space for a conversion.");
+}
+
+async function getVideoDuration(videoId) {
+  const result = await youtube.videos.list({ part: "contentDetails", id: videoId }, { timeout: youtubeApiTimeoutMs });
+  const video = result.data.items[0];
+  if (!video) return null;
+  return parseDuration(video.contentDetails.duration);
 }
 
 function isValidVideoId(videoId) {
@@ -107,9 +153,9 @@ app.get("/search", async (req, res) => {
   const query = String(req.query.q || "").trim().slice(0, 128);
   if (!query) return res.redirect("/");
   try {
-    const search = await youtube.search.list({ part: "id", q: query, type: "video", maxResults: 10 });
+    const search = await youtube.search.list({ part: "id", q: query, type: "video", maxResults: 10 }, { timeout: youtubeApiTimeoutMs });
     const ids = search.data.items.map((item) => item.id.videoId).filter(Boolean);
-    const details = ids.length ? await youtube.videos.list({ part: "snippet,statistics,contentDetails", id: ids.join(",") }) : { data: { items: [] } };
+    const details = ids.length ? await youtube.videos.list({ part: "snippet,statistics,contentDetails", id: ids.join(",") }, { timeout: youtubeApiTimeoutMs }) : { data: { items: [] } };
     youtubeReady = true;
     const rows = details.data.items.map(videoCard).join("") || "<tr><td>No videos found.</td></tr>";
     res.send(layout(`Search: ${query}`, `<div class="section_title">Search Results for &quot;${escapeHtml(query)}&quot;</div><table width="100%" border="0" cellspacing="0" cellpadding="5">${rows}</table>`));
@@ -123,7 +169,7 @@ app.get("/watch", async (req, res) => {
   if (!requireVideoId(req, res)) return;
   const videoId = req.query.v;
   try {
-    const result = await youtube.videos.list({ part: "snippet,statistics,contentDetails", id: videoId });
+    const result = await youtube.videos.list({ part: "snippet,statistics,contentDetails", id: videoId }, { timeout: youtubeApiTimeoutMs });
     const video = result.data.items[0];
     if (!video) return res.status(404).send(layout("Video unavailable", "<p>Video was not found.</p>"));
     youtubeReady = true;
@@ -132,7 +178,7 @@ app.get("/watch", async (req, res) => {
     const title = escapeHtml(video.snippet.title);
     const player = cached
       ? `<object classid="CLSID:22D6F312-B0F6-11D0-94AB-0080C74C7E95" width="450" height="370"><param name="FileName" value="/cache/${videoId}.mpg"><param name="AutoStart" value="true"><param name="ShowControls" value="true"><embed type="application/x-mplayer2" src="/cache/${videoId}.mpg" width="450" height="370" autostart="true"></embed></object>`
-      : `<p><a href="/stream/${videoId}?duration=${seconds}">Start conversion for Windows 98</a></p><p>Maximum conversion length: ${Math.floor(maxVideoSeconds / 60)} minutes. One conversion runs at a time.</p>`;
+      : `<p><a href="/stream/${videoId}">Start conversion for Windows 98</a></p><p>Maximum conversion length: ${Math.floor(maxVideoSeconds / 60)} minutes. One conversion runs at a time.</p>`;
     res.send(layout(title, `<h2>${title}</h2><div>${player}</div><p><b>From:</b> ${escapeHtml(video.snippet.channelTitle)}<br><b>Length:</b> ${formatDuration(seconds)}<br><b>Views:</b> ${Number(video.statistics.viewCount || 0).toLocaleString()}</p><p>${escapeHtml(video.snippet.description || "").replace(/\n/g, "<br>")}</p>`));
   } catch (error) {
     console.error("Watch lookup failed:", error.message);
@@ -154,26 +200,60 @@ app.get("/thumbnail", (req, res) => {
 app.get("/stream/:videoId", async (req, res) => {
   if (!requireVideoId(req, res)) return;
   const videoId = req.params.videoId;
-  const duration = Number(req.query.duration || 0);
   const output = cachePath(videoId);
+  const partial = partialCachePath(videoId);
   if (fs.existsSync(output)) return res.redirect(`/cache/${videoId}.mpg`);
-  if (duration <= 0 || duration > maxVideoSeconds) return res.status(400).send("Video is longer than this viewer permits.");
   if (activeVideoId && activeVideoId !== videoId) return res.status(429).send("Another video conversion is running. Try again shortly.");
   if (activeVideoId === videoId) return res.status(202).send("Conversion already in progress. Reload the video page shortly.");
 
   activeVideoId = videoId;
   progress.set(videoId, "processing");
   try {
-    const { Innertube, UniversalCache } = await import("youtubei.js");
-    const innertube = await Innertube.create({ cache: new UniversalCache(false), generate_session_locally: true, client_type: "ANDROID" });
+    const duration = await getVideoDuration(videoId);
+    if (duration === null) throw new Error("Video was not found.");
+    if (duration <= 0 || duration > maxVideoSeconds) {
+      activeVideoId = null;
+      progress.set(videoId, "rejected");
+      return res.status(400).send("Video is longer than this viewer permits.");
+    }
+    reserveCacheSpace();
+    fs.rmSync(partial, { force: true });
+    const innertube = await getInnertube();
     const input = await innertube.download(videoId, { type: "video+audio", quality: "best", format: "mp4" });
-    const ffmpeg = spawn("ffmpeg", ["-y", "-i", "-", "-threads", "1", "-target", "ntsc-vcd", "-acodec", "libmp3lame", "-ab", "192k", "-ac", "2", "-ar", "44100", "-fs", String(maxOutputBytes), output], { stdio: ["pipe", "ignore", "pipe"] });
-    ffmpeg.on("close", (code) => { progress.set(videoId, code === 0 ? "complete" : "error"); activeVideoId = null; if (code !== 0) fs.rm(output, { force: true }, () => {}); });
-    ffmpeg.on("error", () => { progress.set(videoId, "error"); activeVideoId = null; });
+    const ffmpeg = spawn("ffmpeg", ["-y", "-i", "-", "-threads", "1", "-target", "ntsc-vcd", "-acodec", "libmp3lame", "-ab", "192k", "-ac", "2", "-ar", "44100", "-fs", String(maxOutputBytes), "-f", "vcd", partial], { stdio: ["pipe", "ignore", "pipe"] });
+    activeFfmpeg = ffmpeg;
+    activePartialPath = partial;
+    ffmpeg.stderr.resume();
+    let finalized = false;
+    const finalize = (completed) => {
+      if (finalized) return;
+      finalized = true;
+      if (!completed) fs.rmSync(partial, { force: true });
+      progress.set(videoId, completed ? "complete" : "error");
+      if (activeVideoId === videoId) activeVideoId = null;
+      if (activeFfmpeg === ffmpeg) activeFfmpeg = null;
+      if (activePartialPath === partial) activePartialPath = null;
+    };
+    ffmpeg.once("close", (code) => {
+      let completed = false;
+      if (code === 0 && fs.existsSync(partial)) {
+        try {
+          fs.renameSync(partial, output);
+          completed = true;
+        } catch (error) {
+          console.error("Unable to publish converted video:", error.message);
+        }
+      }
+      finalize(completed);
+    });
+    ffmpeg.once("error", () => finalize(false));
     (async () => { try { for await (const chunk of input) { if (!ffmpeg.stdin.write(chunk)) await new Promise((resolve) => ffmpeg.stdin.once("drain", resolve)); } ffmpeg.stdin.end(); } catch (error) { console.error("Conversion input failed:", error.message); ffmpeg.kill("SIGTERM"); } })();
     res.status(202).send("Conversion started. Reload the video page in a few minutes.");
   } catch (error) {
     activeVideoId = null;
+    activeFfmpeg = null;
+    activePartialPath = null;
+    fs.rmSync(partial, { force: true });
     progress.set(videoId, "error");
     console.error("Conversion start failed:", error.message);
     res.status(502).send("Unable to start conversion.");
@@ -185,4 +265,15 @@ app.get("/status/:videoId", (req, res) => {
   res.type("text/plain").send(progress.get(req.params.videoId) || "unknown");
 });
 
-app.listen(port, "0.0.0.0", () => console.log(`98Tuber viewer listening on ${port}`));
+const server = app.listen(port, "0.0.0.0", () => console.log(`98Tuber viewer listening on ${port}`));
+
+function shutdown(signal) {
+  console.log(`${signal} received; stopping 98Tuber.`);
+  if (activeFfmpeg) activeFfmpeg.kill("SIGTERM");
+  if (activePartialPath) fs.rmSync(activePartialPath, { force: true });
+  server.close(() => process.exit(0));
+  setTimeout(() => process.exit(1), 10000).unref();
+}
+
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));

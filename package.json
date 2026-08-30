@@ -6,12 +6,14 @@
   "scripts": {
     "start": "node viewer-server.js",
     "dev": "node --watch viewer-server.js",
-    "check": "node --check viewer-server.js"
+    "check": "node --check viewer-server.js && node --check youtube-client.js",
+    "test": "npm run check && node --test"
   },
   "dependencies": {
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "googleapis": "^176.0.0",
+    "jintr": "^3.3.1",
     "sharp": "^0.35.4",
     "youtubei.js": "^16.0.1"
   },

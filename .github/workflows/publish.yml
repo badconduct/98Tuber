@@ -10,19 +10,24 @@ permissions:
   packages: write
 
 jobs:
-  validate:
+  validate-and-publish:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 24
           cache: npm
       - run: npm ci
-      - run: npm run check
+      - run: npm test
       - run: npm audit --omit=dev --audit-level=high
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/build-push-action@v6
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: .
           push: false
@@ -40,7 +45,14 @@ jobs:
           done
           docker logs 98tuber-ci
           exit 1
-      - uses: aquasecurity/trivy-action@v0.36.0
+      - name: Exercise the production FFmpeg VCD command
+        run: |
+          docker exec 98tuber-ci ffmpeg -hide_banner -loglevel error \
+            -f lavfi -i testsrc=size=352x240:rate=30000/1001 -t 1 \
+            -threads 1 -target ntsc-vcd -acodec libmp3lame -ab 192k \
+            -ac 2 -ar 44100 -f vcd /tmp/98tuber-ci.partial
+          docker exec 98tuber-ci test -s /tmp/98tuber-ci.partial
+      - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: 98tuber:ci
           version: v0.74.0
@@ -48,23 +60,19 @@ jobs:
           exit-code: "1"
           ignore-unfixed: true
           severity: HIGH,CRITICAL
-      - if: always()
-        run: docker rm --force 98tuber-ci
-
-  publish:
-    if: github.event_name == 'push'
-    needs: validate
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v4
-      - uses: docker/login-action@v3
+      - if: github.event_name == 'push'
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/build-push-action@v6
-        with:
-          context: .
-          push: true
-          tags: ghcr.io/${{ github.repository_owner }}/98tuber:sha-${{ github.sha }}
+      - if: github.event_name == 'push'
+        env:
+          PUBLISHED_IMAGE: >-
+            ghcr.io/${{ github.repository_owner }}/98tuber:sha-${{ github.sha }}
+        run: |
+          docker tag 98tuber:ci "${PUBLISHED_IMAGE}"
+          docker push "${PUBLISHED_IMAGE}"
+          docker image inspect --format '{{index .RepoDigests 0}}' "${PUBLISHED_IMAGE}"
+      - if: always()
+        run: docker rm --force 98tuber-ci || true
