@@ -7,7 +7,8 @@
     "start": "node viewer-server.js",
     "dev": "node --watch viewer-server.js",
     "preview:layout": "node scripts/layout-preview-server.js",
-    "check": "node --check viewer-server.js && node --check youtube-client.js && node --check scripts/layout-preview-server.js",
+    "preflight:media": "node scripts/media-preflight.js",
+    "check": "node --check viewer-server.js && node --check youtube-client.js && node --check scripts/layout-preview-server.js && node --check scripts/media-preflight.js",
     "test": "npm run check && node --test"
   },
   "dependencies": {
@@ -17,7 +18,7 @@
     "googleapis": "^176.0.0",
     "jintr": "^3.3.1",
     "sharp": "^0.35.4",
-    "youtubei.js": "^16.0.1"
+    "youtubei.js": "18.0.0"
   },
   "overrides": {
     "tar": "^7.5.7",

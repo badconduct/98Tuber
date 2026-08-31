@@ -46,6 +46,22 @@ docker compose up --build
 Open `http://127.0.0.1:3000/health/live`. A successful search verifies the
 API key and browse path; a small authorized video verifies conversion.
 
+Before a full conversion, exercise the volatile YouTube player, signature,
+and media-download path with an authorized video ID. The preflight fetches at
+most 1 KiB and saves nothing:
+
+```bash
+MEDIA_PREFLIGHT_VIDEO_ID=REPLACE_WITH_AUTHORIZED_VIDEO_ID \
+  npm run preflight:media
+```
+
+In the production container, run the same bounded check with:
+
+```bash
+docker exec -e MEDIA_PREFLIGHT_VIDEO_ID=REPLACE_WITH_AUTHORIZED_VIDEO_ID \
+  dockernet-98tuber node scripts/media-preflight.js
+```
+
 To inspect the populated period layout without an API key or Docker, run
 `npm run preview:layout` and open `http://127.0.0.1:3211/`. The preview binds
 only to loopback and uses fixture metadata.

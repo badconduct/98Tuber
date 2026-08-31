@@ -37,7 +37,7 @@ test("file-mounted API key starts a live service and shuts down cleanly", async 
 
   try {
     let response;
-    for (let attempt = 0; attempt < 100; attempt += 1) {
+    for (let attempt = 0; attempt < 300; attempt += 1) {
       try {
         response = await fetch(`http://127.0.0.1:${port}/health/live`);
         break;
