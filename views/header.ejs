@@ -1,134 +1,49 @@
 <div id="logoTagDiv">
-  <a href="/"
-    ><img src="/images/youtube_logo.jpg" alt="YouTube" width="120" border="0"
-  /></a>
+  <a href="/"><img src="/images/youtube_logo.jpg" alt="YouTube" width="120" border="0"></a>
 </div>
 
 <div id="utilDiv">
-  <% if (typeof user !== 'undefined' && user) { %>
-  <b>Hello, <a href="/my_account"><%= user.username %></a></b>
+  <a href="/">Home</a>
   <span class="utilDelim">|</span>
-  <a href="/my_account">My Account</a>
+  <a href="/videos">Videos</a>
   <span class="utilDelim">|</span>
-  <a href="/history">History</a>
-  <span class="utilDelim">|</span>
-  <a href="/my_account">QuickList</a>
-  <span class="utilDelim">|</span>
-  <a href="/help">Help</a>
-  <span class="utilDelim">|</span>
-  <a href="/logout">Log Out</a>
-  <% } else { %>
-  <b><a href="/signup">Sign Up</a></b>
-  <span class="utilDelim">|</span>
-  <a href="/login">My Account</a>
-  <span class="utilDelim">|</span>
-  <a href="/history">History</a>
-  <span class="utilDelim">|</span>
-  <a href="/help">Help</a>
-  <span class="utilDelim">|</span>
-  <a href="/login">Log In</a>
-  <% } %>
+  <a href="/search?q=classic+television">Classic TV</a>
 </div>
 
 <div id="searchDiv">
   <form name="searchForm" id="searchForm" method="get" action="/search">
     <span class="smallLabel">Search for&nbsp;</span>
-    <input
-      tabindex="10000"
-      type="text"
-      name="q"
-      maxlength="128"
-      class="searchField"
-      value=""
-    />
-    &nbsp;
-    <input type="submit" name="search" value="Search" />
+    <input tabindex="10000" type="text" name="q" maxlength="128" class="searchField" value="<%= typeof query !== 'undefined' ? query : '' %>">
+    &nbsp;<input type="submit" value="Search">
   </form>
 </div>
 
 <table width="100%" cellpadding="0" cellspacing="0" border="0">
-  <tbody>
-    <tr>
-      <td>
-        <div id="gNavDiv">
-          <div class="tab">
-            <div
-              class="tabContent <%= typeof page !== 'undefined' && page === 'home' ? 'selected' : '' %>"
-            >
-              <a href="/" name="&amp;lid=Home&amp;lpos=GlobalNav">Home</a>
-            </div>
-          </div>
-          <div class="tab">
-            <div
-              class="tabContent <%= typeof page !== 'undefined' && page === 'videos' ? 'selected' : '' %>"
-            >
-              <a href="/videos" name="&amp;lid=Videos&amp;lpos=GlobalNav"
-                >Videos</a
-              >
-            </div>
-          </div>
-          <div class="tab">
-            <div
-              class="tabContent <%= typeof page !== 'undefined' && page === 'channels' ? 'selected' : '' %>"
-            >
-              <a href="/channels" name="&amp;lid=Channels&amp;lpos=GlobalNav"
-                >Channels</a
-              >
-            </div>
-          </div>
-          <div class="tab">
-            <div
-              class="tabContent <%= typeof page !== 'undefined' && page === 'groups' ? 'selected' : '' %>"
-            >
-              <a href="/groups" name="&amp;lid=Groups&amp;lpos=GlobalNav"
-                >Groups</a
-              >
-            </div>
-          </div>
-          <div class="tab">
-            <div
-              class="tabContent <%= typeof page !== 'undefined' && page === 'categories' ? 'selected' : '' %>"
-            >
-              <a
-                href="/categories"
-                name="&amp;lid=Categories&amp;lpos=GlobalNav"
-                >Categories</a
-              >
-            </div>
-          </div>
-          <div class="tab">
-            <div
-              class="tabContent <%= typeof page !== 'undefined' && page === 'upload' ? 'selected' : '' %>"
-            >
-              <a href="/upload" name="&amp;lid=Upload&amp;lpos=GlobalNav"
-                >Upload</a
-              >
-            </div>
-          </div>
-        </div>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <% if (typeof page !== 'undefined' && page === 'home') { %>
-        <div id="gSubNavDiv">
-          &nbsp;
-          <a href="/my_profile">My Account</a>
-          <span style="padding: 0px 8px">|</span>
-          <a href="/history">History</a>
-          <span style="padding: 0px 8px">|</span>
-          <a href="/quicklist">QuickList</a> (<a
-            href="/quicklist"
-            id="quicklist_nav_count"
-            >0</a
-          >)
-          <span style="padding: 0px 8px">|</span>
-          <a href="/help">Help</a>
-        </div>
-        <% } else { %>
-        <div style="margin-bottom: 10px"></div>
-        <% } %>
-      </td>
-    </tr>
-  </tbody>
+  <tr>
+    <td>
+      <div id="gNavDiv">
+        <div class="tab"><div class="tabContent <%= page === 'home' ? 'selected' : '' %>"><a href="/">Home</a></div></div>
+        <div class="tab"><div class="tabContent <%= page === 'videos' ? 'selected' : '' %>"><a href="/videos">Videos</a></div></div>
+        <div class="tab"><div class="tabContent"><a href="/search?q=music">Music</a></div></div>
+        <div class="tab"><div class="tabContent"><a href="/search?q=comedy">Comedy</a></div></div>
+        <div class="tab"><div class="tabContent"><a href="/search?q=technology">Technology</a></div></div>
+        <div class="tab"><div class="tabContent"><a href="/search?q=film+animation">Film &amp; Animation</a></div></div>
+      </div>
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <div id="gSubNavDiv">
+        <a href="/videos">Most Viewed</a>
+        <span style="padding: 0px 8px">|</span>
+        <a href="/search?q=gaming">Gaming</a>
+        <span style="padding: 0px 8px">|</span>
+        <a href="/search?q=news">News</a>
+        <span style="padding: 0px 8px">|</span>
+        <a href="/search?q=sports">Sports</a>
+        <span style="padding: 0px 8px">|</span>
+        <a href="/search?q=retro+computing">Retro Computing</a>
+      </div>
+    </td>
+  </tr>
 </table>

@@ -1,8 +1,9 @@
 # 98Tuber viewer
 
-98Tuber is a LAN-only, HTTP viewer for Windows 98SE and IE6. It searches
-YouTube through the YouTube Data API, converts an explicitly requested video
-to MPEG-1/VCD, and serves the result to Windows Media Player 6.4.
+98Tuber is a LAN-only, HTTP viewer for Windows 98SE and IE6. Its table-based
+period layout searches YouTube through the YouTube Data API, converts an
+explicitly requested video to MPEG-1/VCD, and serves the result to Windows
+Media Player 6.4.
 
 It is deliberately viewer-only. Accounts, favorites, comments, uploads, the
 legacy PostgreSQL sidecar, and old cached videos are not part of Dockernet.
@@ -44,6 +45,10 @@ docker compose up --build
 
 Open `http://127.0.0.1:3000/health/live`. A successful search verifies the
 API key and browse path; a small authorized video verifies conversion.
+
+To inspect the populated period layout without an API key or Docker, run
+`npm run preview:layout` and open `http://127.0.0.1:3211/`. The preview binds
+only to loopback and uses fixture metadata.
 
 ## Delivery to Dockernet
 

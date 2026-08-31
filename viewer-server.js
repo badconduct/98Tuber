@@ -8,7 +8,6 @@ const { spawn } = require("child_process");
 const dotenv = require("dotenv");
 const { google } = require("googleapis");
 const sharp = require("sharp");
-const { getInnertube } = require("./youtube-client");
 
 dotenv.config();
 
@@ -32,6 +31,15 @@ let activeVideoId = null;
 let activeFfmpeg = null;
 let activePartialPath = null;
 let youtubeReady = false;
+let popularVideoCache = { expiresAt: 0, videos: [] };
+let mediaClientFactory = null;
+
+async function getMediaClient() {
+  if (!mediaClientFactory) {
+    mediaClientFactory = require("./youtube-client").getInnertube;
+  }
+  return mediaClientFactory();
+}
 
 function readRequiredSecret(name) {
   const fileName = process.env[`${name}_FILE`];
@@ -53,15 +61,6 @@ for (const name of fs.readdirSync(cacheDir).filter((entry) => entry.endsWith(".p
 
 const youtube = google.youtube({ version: "v3", auth: youtubeApiKey });
 
-function escapeHtml(value) {
-  return String(value || "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/\"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
 function parseDuration(value) {
   const match = /^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/.exec(value || "");
   if (!match) return 0;
@@ -73,6 +72,71 @@ function formatDuration(seconds) {
   const minutes = Math.floor((seconds % 3600) / 60);
   const remainder = seconds % 60;
   return hours ? `${hours}:${String(minutes).padStart(2, "0")}:${String(remainder).padStart(2, "0")}` : `${minutes}:${String(remainder).padStart(2, "0")}`;
+}
+
+function relativeTime(value) {
+  const timestamp = Date.parse(value || "");
+  if (!Number.isFinite(timestamp)) return "Unknown";
+  const elapsedSeconds = Math.max(0, Math.floor((Date.now() - timestamp) / 1000));
+  const units = [
+    [31536000, "year"],
+    [2592000, "month"],
+    [86400, "day"],
+    [3600, "hour"],
+    [60, "minute"],
+  ];
+  for (const [seconds, label] of units) {
+    if (elapsedSeconds >= seconds) {
+      const count = Math.floor(elapsedSeconds / seconds);
+      return `${count} ${label}${count === 1 ? "" : "s"} ago`;
+    }
+  }
+  return "Just now";
+}
+
+function normalizeVideo(video) {
+  const snippet = video && video.snippet || {};
+  const statistics = video && video.statistics || {};
+  const contentDetails = video && video.contentDetails || {};
+  const thumbnails = snippet.thumbnails || {};
+  const thumbnail = thumbnails.medium || thumbnails.default || thumbnails.high || {};
+  const durationSeconds = parseDuration(contentDetails.duration);
+  return {
+    id: String(video && video.id || ""),
+    title: String(snippet.title || "Untitled video"),
+    channelTitle: String(snippet.channelTitle || "Unknown"),
+    description: String(snippet.description || ""),
+    thumbnail: String(thumbnail.url || ""),
+    duration: formatDuration(durationSeconds),
+    durationSeconds,
+    publishedAt: relativeTime(snippet.publishedAt),
+    publishedDate: snippet.publishedAt
+      ? new Date(snippet.publishedAt).toLocaleDateString("en-CA", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        })
+      : "Unknown",
+    viewCount: Number(statistics.viewCount || 0).toLocaleString("en-US"),
+  };
+}
+
+async function loadPopularVideos() {
+  const now = Date.now();
+  if (popularVideoCache.videos.length && popularVideoCache.expiresAt > now) {
+    return popularVideoCache.videos;
+  }
+  const result = await youtube.videos.list({
+    part: "snippet,statistics,contentDetails",
+    chart: "mostPopular",
+    regionCode: "CA",
+    maxResults: 12,
+  }, { timeout: youtubeApiTimeoutMs });
+  const videos = result.data.items.map(normalizeVideo).filter((video) => video.id);
+  if (!videos.length) throw new Error("YouTube returned no popular videos.");
+  popularVideoCache = { videos, expiresAt: now + 15 * 60 * 1000 };
+  youtubeReady = true;
+  return videos;
 }
 
 function cachePath(videoId) {
@@ -111,20 +175,6 @@ function isValidVideoId(videoId) {
   return videoIdPattern.test(videoId || "");
 }
 
-function layout(title, body) {
-  return `<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"><html><head><title>${escapeHtml(title)}</title><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><link rel="stylesheet" href="/base.css" type="text/css"></head><body><div id="baseDiv"><div id="logoTagDiv"><a href="/"><img src="/images/youtube_logo.jpg" alt="98Tuber" width="120" border="0"></a></div><div id="utilDiv">Windows 98 viewer &middot; LAN only</div><div id="searchDiv"><form method="get" action="/search"><span class="smallLabel">Search for&nbsp;</span><input type="text" name="q" maxlength="128" class="searchField"> <input type="submit" value="Search"></form></div>${body}</div></body></html>`;
-}
-
-function videoCard(video) {
-  const thumb = encodeURIComponent(video.snippet.thumbnails.default.url);
-  const title = escapeHtml(video.snippet.title);
-  const channel = escapeHtml(video.snippet.channelTitle);
-  const description = escapeHtml(video.snippet.description || "").slice(0, 180);
-  const duration = formatDuration(parseDuration(video.contentDetails && video.contentDetails.duration));
-  const views = Number(video.statistics && video.statistics.viewCount || 0).toLocaleString();
-  return `<tr><td width="130" valign="top"><a href="/watch?v=${video.id}"><img src="/thumbnail?url=${thumb}" width="120" height="90" border="0" alt=""></a></td><td valign="top"><a href="/watch?v=${video.id}" class="video_title_large">${title}</a><br><span class="video_meta">${description}</span><br><br><span class="video_details">Time: <b>${duration}</b><br>From: ${channel}<br>Views: ${views}</span></td></tr>`;
-}
-
 function requireVideoId(req, res) {
   if (!isValidVideoId(req.params.videoId || req.query.v)) {
     res.status(400).send("Invalid video identifier.");
@@ -134,6 +184,8 @@ function requireVideoId(req, res) {
 }
 
 app.disable("x-powered-by");
+app.set("view engine", "ejs");
+app.set("views", path.join(__dirname, "views"));
 app.use((req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-Frame-Options", "SAMEORIGIN");
@@ -145,8 +197,36 @@ app.use("/cache", express.static(cacheDir, { fallthrough: false, maxAge: "30d" }
 app.get("/health/live", (req, res) => res.json({ ok: true, service: "98tuber-viewer" }));
 app.get("/health/ready", (req, res) => res.status(youtubeReady ? 200 : 503).json({ ok: youtubeReady }));
 
-app.get("/", (req, res) => {
-  res.send(layout("98Tuber", "<div style=\"padding:20px\"><h2>Windows 98 Video Viewer</h2><p>Search for a video, then request an MPEG-1 conversion for Windows Media Player 6.4.</p><p>This viewer has no accounts, comments, favorites, or uploads.</p></div>"));
+app.get("/", async (req, res) => {
+  try {
+    const videos = await loadPopularVideos();
+    res.render("index", {
+      page: "home",
+      recentlyFeatured: videos.slice(0, 4),
+      featuredVideos: videos.slice(4),
+      activeChannels: [...new Map(videos.map((video) => [video.channelTitle, video])).values()].slice(0, 5),
+      error: null,
+    });
+  } catch (error) {
+    console.error("Home page lookup failed:", error.message);
+    res.render("index", {
+      page: "home",
+      recentlyFeatured: [],
+      featuredVideos: [],
+      activeChannels: [],
+      error: "Featured videos are temporarily unavailable. Search may still be used.",
+    });
+  }
+});
+
+app.get("/videos", async (req, res) => {
+  try {
+    const videos = await loadPopularVideos();
+    res.render("search", { page: "videos", heading: "Most Viewed Videos", query: "", videos, error: null });
+  } catch (error) {
+    console.error("Video directory lookup failed:", error.message);
+    res.status(502).render("search", { page: "videos", heading: "Most Viewed Videos", query: "", videos: [], error: "Videos are temporarily unavailable." });
+  }
 });
 
 app.get("/search", async (req, res) => {
@@ -157,11 +237,11 @@ app.get("/search", async (req, res) => {
     const ids = search.data.items.map((item) => item.id.videoId).filter(Boolean);
     const details = ids.length ? await youtube.videos.list({ part: "snippet,statistics,contentDetails", id: ids.join(",") }, { timeout: youtubeApiTimeoutMs }) : { data: { items: [] } };
     youtubeReady = true;
-    const rows = details.data.items.map(videoCard).join("") || "<tr><td>No videos found.</td></tr>";
-    res.send(layout(`Search: ${query}`, `<div class="section_title">Search Results for &quot;${escapeHtml(query)}&quot;</div><table width="100%" border="0" cellspacing="0" cellpadding="5">${rows}</table>`));
+    const videos = details.data.items.map(normalizeVideo);
+    res.render("search", { page: "search", heading: `Search Results for \"${query}\"`, query, videos, error: null });
   } catch (error) {
     console.error("Search failed:", error.message);
-    res.status(502).send(layout("Search unavailable", "<p>Video search is temporarily unavailable. Try again later.</p>"));
+    res.status(502).render("search", { page: "search", heading: `Search Results for \"${query}\"`, query, videos: [], error: "Video search is temporarily unavailable. Try again later." });
   }
 });
 
@@ -171,18 +251,33 @@ app.get("/watch", async (req, res) => {
   try {
     const result = await youtube.videos.list({ part: "snippet,statistics,contentDetails", id: videoId }, { timeout: youtubeApiTimeoutMs });
     const video = result.data.items[0];
-    if (!video) return res.status(404).send(layout("Video unavailable", "<p>Video was not found.</p>"));
+    if (!video) {
+      return res.status(404).render("watch", {
+        page: "videos",
+        video: null,
+        videoId,
+        isCached: false,
+        convertible: false,
+        maxVideoMinutes: Math.floor(maxVideoSeconds / 60),
+        error: "Video was not found.",
+      });
+    }
     youtubeReady = true;
-    const seconds = parseDuration(video.contentDetails.duration);
+    const normalized = normalizeVideo(video);
+    const seconds = normalized.durationSeconds;
     const cached = fs.existsSync(cachePath(videoId));
-    const title = escapeHtml(video.snippet.title);
-    const player = cached
-      ? `<object classid="CLSID:22D6F312-B0F6-11D0-94AB-0080C74C7E95" width="450" height="370"><param name="FileName" value="/cache/${videoId}.mpg"><param name="AutoStart" value="true"><param name="ShowControls" value="true"><embed type="application/x-mplayer2" src="/cache/${videoId}.mpg" width="450" height="370" autostart="true"></embed></object>`
-      : `<p><a href="/stream/${videoId}">Start conversion for Windows 98</a></p><p>Maximum conversion length: ${Math.floor(maxVideoSeconds / 60)} minutes. One conversion runs at a time.</p>`;
-    res.send(layout(title, `<h2>${title}</h2><div>${player}</div><p><b>From:</b> ${escapeHtml(video.snippet.channelTitle)}<br><b>Length:</b> ${formatDuration(seconds)}<br><b>Views:</b> ${Number(video.statistics.viewCount || 0).toLocaleString()}</p><p>${escapeHtml(video.snippet.description || "").replace(/\n/g, "<br>")}</p>`));
+    res.render("watch", {
+      page: "videos",
+      video: normalized,
+      videoId,
+      isCached: cached,
+      convertible: seconds > 0 && seconds <= maxVideoSeconds,
+      maxVideoMinutes: Math.floor(maxVideoSeconds / 60),
+      error: null,
+    });
   } catch (error) {
     console.error("Watch lookup failed:", error.message);
-    res.status(502).send(layout("Video unavailable", "<p>Video details are temporarily unavailable.</p>"));
+    res.status(502).render("watch", { page: "videos", video: null, videoId, isCached: false, convertible: false, maxVideoMinutes: Math.floor(maxVideoSeconds / 60), error: "Video details are temporarily unavailable." });
   }
 });
 
@@ -218,7 +313,7 @@ app.get("/stream/:videoId", async (req, res) => {
     }
     reserveCacheSpace();
     fs.rmSync(partial, { force: true });
-    const innertube = await getInnertube();
+    const innertube = await getMediaClient();
     const input = await innertube.download(videoId, { type: "video+audio", quality: "best", format: "mp4" });
     const ffmpeg = spawn("ffmpeg", ["-y", "-i", "-", "-threads", "1", "-target", "ntsc-vcd", "-acodec", "libmp3lame", "-ab", "192k", "-ac", "2", "-ar", "44100", "-fs", String(maxOutputBytes), "-f", "vcd", partial], { stdio: ["pipe", "ignore", "pipe"] });
     activeFfmpeg = ffmpeg;

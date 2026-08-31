@@ -10,4 +10,8 @@ docker-compose.yml
 README.md
 DOCKER_README.md
 server.js
-views
+views/*
+!views/header.ejs
+!views/index.ejs
+!views/search.ejs
+!views/watch.ejs

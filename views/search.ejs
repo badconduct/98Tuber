@@ -1,109 +1,37 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
-  <head>
-    <title>98Tuber - Search: <%= query %></title>
-    <link rel="stylesheet" type="text/css" href="/base.css" />
-  </head>
-  <body>
-    <div align="center">
-      <div id="main_container">
-        <!-- Header -->
-        <%- include('header') %>
+<head>
+  <title>98Tuber - <%= heading %></title>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <link rel="stylesheet" href="/base.css" type="text/css">
+</head>
+<body>
+<div id="baseDiv">
+  <%- include('header', { page: page, query: query }) %>
 
-        <br />
+  <div class="section_title"><%= heading %></div>
+  <% if (error) { %><div class="errorBox"><%= error %></div><% } %>
 
-        <!-- Content -->
-        <table width="100%" border="0" cellspacing="0" cellpadding="5">
-          <tr>
-            <td valign="top">
-              <div class="section_title">Search Results for "<%= query %>"</div>
-              <table width="100%" border="0" cellspacing="0" cellpadding="5">
-                <% videos.forEach(function(video) { %>
-                <tr>
-                  <td width="130" valign="top">
-                    <a href="/watch?v=<%= video.id %>">
-                      <img
-                        src="/thumbnail?url=<%= encodeURIComponent(video.snippet.thumbnails.default.url) %>"
-                        width="120"
-                        height="90"
-                        border="0"
-                      />
-                    </a>
-                  </td>
-                  <td valign="top">
-                    <a href="/watch?v=<%= video.id %>" class="video_title_large"
-                      ><%= video.snippet.title %></a
-                    >
-                    <br />
-                    <span class="video_meta">
-                      <%= video.snippet.description.substring(0, 150) %>...
-                    </span>
-                    <br /><br />
-                    <span class="video_details">
-                      <table border="0" cellspacing="0" cellpadding="0">
-                        <tr>
-                          <td class="video_meta" style="padding-right: 10px">
-                            Time:
-                          </td>
-                          <td class="video_meta">
-                            <b><%= video.duration %></b>
-                          </td>
-                        </tr>
-                        <tr>
-                          <td class="video_meta" style="padding-right: 10px">
-                            Added:
-                          </td>
-                          <td class="video_meta"><%= video.publishedAt %></td>
-                        </tr>
-                        <tr>
-                          <td class="video_meta" style="padding-right: 10px">
-                            From:
-                          </td>
-                          <td class="video_meta">
-                            <a href="#"><%= video.snippet.channelTitle %></a>
-                          </td>
-                        </tr>
-                        <tr>
-                          <td class="video_meta" style="padding-right: 10px">
-                            Views:
-                          </td>
-                          <td class="video_meta"><%= video.viewCount %></td>
-                        </tr>
-                        <tr>
-                          <td class="video_meta" style="padding-right: 10px">
-                            Ratings:
-                          </td>
-                          <td class="video_meta">
-                            <% 
-                              var score = parseFloat(video.rating);
-                              var fullStars = Math.floor(score);
-                              var halfStar = (score - fullStars) >= 0.5 ? 1 : 0;
-                              var emptyStars = 5 - fullStars - halfStar;
-                            %>
-                            <% for(let i=0; i<fullStars; i++) { %>
-                              <img src="/images/star_sm.gif" border="0" />
-                            <% } %>
-                            <% if(halfStar) { %>
-                              <img src="/images/star_sm_half.gif" border="0" />
-                            <% } %>
-                            <% for(let i=0; i<emptyStars; i++) { %>
-                              <img src="/images/star_sm_bg.gif" border="0" />
-                            <% } %>
-                          </td>
-                        </tr>
-                      </table>
-                    </span>
-                  </td>
-                </tr>
-                <% }); %>
-              </table>
-            </td>
-          </tr>
+  <table width="100%" border="0" cellspacing="0" cellpadding="5">
+    <% videos.forEach(function(video) { %>
+    <tr>
+      <td width="130" valign="top"><a href="/watch?v=<%= video.id %>"><img src="/thumbnail?url=<%= encodeURIComponent(video.thumbnail) %>" width="120" height="90" border="0" alt="" style="border: 1px solid #999"></a></td>
+      <td valign="top">
+        <a href="/watch?v=<%= video.id %>" class="video_title_large"><%= video.title %></a><br>
+        <span class="video_meta"><%= video.description.substring(0, 180) %><%= video.description.length > 180 ? '...' : '' %></span><br><br>
+        <table border="0" cellspacing="0" cellpadding="0">
+          <tr><td class="video_meta" width="55">Time:</td><td class="video_meta"><b><%= video.duration %></b></td></tr>
+          <tr><td class="video_meta">Added:</td><td class="video_meta"><%= video.publishedAt %></td></tr>
+          <tr><td class="video_meta">From:</td><td class="video_meta"><a href="/search?q=<%= encodeURIComponent(video.channelTitle) %>"><%= video.channelTitle %></a></td></tr>
+          <tr><td class="video_meta">Views:</td><td class="video_meta"><%= video.viewCount %></td></tr>
         </table>
+      </td>
+    </tr>
+    <% }); %>
+  </table>
+  <% if (!videos.length && !error) { %><div class="contentBox">No videos found.</div><% } %>
 
-        <br />
-        <div align="center" class="footer">&copy; 2025 98Tuber</div>
-      </div>
-    </div>
-  </body>
+  <div id="footerDiv"><div id="footerCopyright">98Tuber | <a href="/">Home</a> | <a href="/videos">Videos</a></div></div>
+</div>
+</body>
 </html>
