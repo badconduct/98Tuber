@@ -10,6 +10,7 @@ const root = path.resolve(__dirname, "..");
 const views = path.join(root, "views");
 const server = fs.readFileSync(path.join(root, "viewer-server.js"), "utf8");
 const dockerfile = fs.readFileSync(path.join(root, "Dockerfile"), "utf8");
+const dockerignore = fs.readFileSync(path.join(root, ".dockerignore"), "utf8");
 
 const video = {
   id: "jNQXAC9IVRw",
@@ -30,6 +31,9 @@ function render(name, data) {
 
 test("the production image includes the period templates", () => {
   assert.match(dockerfile, /views\/header\.ejs views\/index\.ejs views\/search\.ejs views\/watch\.ejs \.\/views\//);
+  for (const name of ["header", "index", "search", "watch"]) {
+    assert.match(dockerignore, new RegExp(`!views/${name}\\.ejs`));
+  }
   assert.match(server, /app\.set\("view engine", "ejs"\)/);
   assert.match(server, /chart: "mostPopular"/);
   assert.doesNotMatch(server, /layout\(/);
