@@ -1,439 +1,108 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
 <head>
-	<title>YouTube - <%= video.snippet.title %></title>
-	<link rel="stylesheet" href="/base.css" type="text/css">
-	
-	<script type="text/javascript">
-		// Transcoding Logic
-		function createXHR() {
-			if (typeof XMLHttpRequest !== 'undefined') {
-				return new XMLHttpRequest();
-			}
-			var versions = [
-				"MSXML2.XmlHttp.6.0",
-				"MSXML2.XmlHttp.5.0",
-				"MSXML2.XmlHttp.4.0",
-				"MSXML2.XmlHttp.3.0",
-				"MSXML2.XmlHttp.2.0",
-				"Microsoft.XmlHttp"
-			];
-
-			var xhr;
-			for (var i = 0; i < versions.length; i++) {
-				try {
-					xhr = new ActiveXObject(versions[i]);
-					break;
-				} catch (e) {
-				}
-			}
-			return xhr;
-		}
-
-		function startTranscode() {
-			var videoId = "<%= videoId %>";
-			var duration = "<%= duration %>";
-			
-			var xhr = createXHR();
-			xhr.open("GET", "/stream/" + videoId + "?duration=" + duration, true);
-			xhr.send();
-			
-			document.getElementById('start_link_container').style.display = 'none';
-			document.getElementById('progress_container').style.display = 'block';
-			
-			var interval = setInterval(function() {
-				var statusXhr = createXHR();
-				statusXhr.open("GET", "/status/" + videoId + "?t=" + Math.random(), true);
-				statusXhr.onreadystatechange = function() {
-					if (statusXhr.readyState == 4 && statusXhr.status == 200) {
-						var parts = statusXhr.responseText.split('|');
-						var percent = parseInt(parts[0], 10);
-						var status = parts[1];
-						
-						document.getElementById('progress_bar').style.width = percent + '%';
-						document.getElementById('progress_text').innerHTML = percent + '%';
-						
-						if (status == 'complete' || percent >= 100) {
-							clearInterval(interval);
-							window.location.reload();
-						}
-					}
-				};
-				statusXhr.send();
-			}, 1000);
-			
-			return false;
-		}
-		
-		// Comments Logic
-		var videoId = "<%= videoId %>";
-		var pageTokens = [""];
-		var currentPageIndex = 0;
-
-		function showComments() {
-			document.getElementById("show_comments_btn_div").style.display = "none";
-			document.getElementById("all_comments").style.display = "block";
-			loadComments();
-		}
-
-		function nextPage() {
-			if (currentPageIndex < pageTokens.length - 1) {
-				currentPageIndex++;
-				loadComments();
-			}
-		}
-
-		function prevPage() {
-			if (currentPageIndex > 0) {
-				currentPageIndex--;
-				loadComments();
-			}
-		}
-
-		function loadComments() {
-			var xhr = createXHR();
-			var token = pageTokens[currentPageIndex];
-			var url = "/comments/" + videoId;
-			if (token) {
-				url += "?pageToken=" + token;
-			}
-
-			var list = document.getElementById("all_comments_content");
-			var pagination = document.getElementById("comments_pagination");
-			
-			list.innerHTML = '<div style="text-align: center; padding: 20px;">Loading comments...</div>';
-			if (pagination) pagination.innerHTML = "";
-			
-			xhr.onreadystatechange = function() {
-				if (xhr.readyState == 4) {
-					if (xhr.status == 200) {
-						var data = eval("(" + xhr.responseText + ")");
-						list.innerHTML = "";
-						
-						if (data.comments && data.comments.length > 0) {
-							var html = "";
-							for (var i = 0; i < data.comments.length; i++) {
-								var c = data.comments[i];
-								html += '<div class="commentEntry">';
-								html += '<div class="commentHead"><b>' + c.author + '</b> <span class="smallText">(' + c.date + ')</span></div>';
-								html += '<div class="commentBody">' + c.text + '</div>';
-								html += '</div>';
-							}
-							list.innerHTML = html;
-
-							// Handle Pagination Tokens
-							if (data.nextPageToken) {
-								if (pageTokens.length <= currentPageIndex + 1) {
-									pageTokens.push(data.nextPageToken);
-								} else {
-									pageTokens[currentPageIndex + 1] = data.nextPageToken;
-								}
-							}
-
-							// Render Pagination Controls
-							var pagHtml = '<div style="text-align: right; padding-top: 5px; font-weight: bold;">';
-							var hasPrev = currentPageIndex > 0;
-							var hasNext = !!data.nextPageToken;
-
-							if (hasPrev) {
-								pagHtml += '<a href="javascript:prevPage();" class="eLink">&lt; Previous</a>';
-							}
-							
-							if (hasPrev && hasNext) {
-								pagHtml += ' <span class="utilDelim">|</span> ';
-							}
-							
-							if (hasNext) {
-								pagHtml += '<a href="javascript:nextPage();" class="eLink">Next &gt;</a>';
-							}
-							pagHtml += '</div>';
-							
-							if (!pagination) {
-								pagination = document.createElement("div");
-								pagination.id = "comments_pagination";
-								document.getElementById("all_comments").appendChild(pagination);
-							}
-							pagination.innerHTML = pagHtml;
-
-						} else {
-							list.innerHTML = "<p>No comments found.</p>";
-						}
-					} else {
-						list.innerHTML = "Error loading comments.";
-					}
-				}
-			};
-			xhr.open("GET", url, true);
-			xhr.send(null);
-		}
-	</script>
+  <title>98Tuber<%= video ? ' - ' + video.title : '' %></title>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <link rel="stylesheet" href="/base.css" type="text/css">
+  <% if (video) { %>
+  <script type="text/javascript">
+  var conversionTimer = null;
+  function createRequest() {
+    if (window.XMLHttpRequest) return new XMLHttpRequest();
+    try { return new ActiveXObject("Msxml2.XMLHTTP"); } catch (e) {}
+    try { return new ActiveXObject("Microsoft.XMLHTTP"); } catch (e) {}
+    return null;
+  }
+  function showConversionMessage(message) {
+    document.getElementById("conversion_message").innerHTML = message;
+  }
+  function pollConversion() {
+    var request = createRequest();
+    if (!request) { showConversionMessage("Your browser could not check conversion status. Reload this page in a few minutes."); return; }
+    request.onreadystatechange = function() {
+      if (request.readyState != 4) return;
+      if (request.status == 200) {
+        var status = request.responseText.replace(/^\s+|\s+$/g, "");
+        if (status == "complete") { window.location.reload(); return; }
+        if (status == "error" || status == "rejected") { showConversionMessage("Conversion failed or was rejected."); return; }
+        showConversionMessage("Conversion in progress... please wait.");
+        conversionTimer = window.setTimeout(pollConversion, 2500);
+      } else {
+        showConversionMessage("Unable to check conversion status.");
+      }
+    };
+    request.open("GET", "/status/<%= videoId %>?t=" + new Date().getTime(), true);
+    request.send(null);
+  }
+  function startConversion() {
+    var request = createRequest();
+    if (!request) return true;
+    document.getElementById("start_conversion").style.display = "none";
+    document.getElementById("conversion_progress").style.display = "block";
+    showConversionMessage("Starting conversion...");
+    request.onreadystatechange = function() {
+      if (request.readyState != 4) return;
+      if (request.status == 202 || request.status == 200) {
+        conversionTimer = window.setTimeout(pollConversion, 1500);
+      } else {
+        showConversionMessage(request.responseText || "Unable to start conversion.");
+      }
+    };
+    request.open("GET", "/stream/<%= videoId %>", true);
+    request.send(null);
+    return false;
+  }
+  </script>
+  <% } %>
 </head>
-
 <body>
+<div id="baseDiv">
+  <%- include('header', { page: page, query: '' }) %>
 
-<div id="baseDiv">	
-	<%- include('header', { page: 'videos' }) %>
+  <% if (error || !video) { %>
+    <div class="errorBox"><%= error || 'Video was not found.' %></div>
+  <% } else { %>
+    <div style="font-size: 18px; font-weight: bold; color: #333; margin: 10px 0"><%= video.title %></div>
+    <table width="875" cellpadding="0" cellspacing="0" border="0"><tr valign="top">
+      <td width="450" style="padding-right: 15px">
+        <div style="margin-bottom: 10px">
+        <% if (isCached) { %>
+          <object id="MediaPlayer" classid="CLSID:22D6F312-B0F6-11D0-94AB-0080C74C7E95" width="450" height="370">
+            <param name="FileName" value="/cache/<%= videoId %>.mpg">
+            <param name="AutoStart" value="true">
+            <param name="ShowControls" value="true">
+            <param name="ShowStatusBar" value="true">
+            <embed type="application/x-mplayer2" src="/cache/<%= videoId %>.mpg" width="450" height="370" autostart="true"></embed>
+          </object>
+        <% } else if (convertible) { %>
+          <div id="start_conversion" style="width: 450px; height: 370px; background: #000; color: #fff; text-align: center">
+            <div style="padding-top: 145px">Video requires conversion.<br><br><a href="/stream/<%= videoId %>" onclick="return startConversion();" style="color: #ff0; font-weight: bold">[ Click here to Start Conversion ]</a></div>
+          </div>
+          <div id="conversion_progress" style="display: none; width: 450px; height: 370px; background: #000; color: #fff; text-align: center">
+            <div style="padding-top: 155px"><b id="conversion_message">Starting conversion...</b><br><br><span class="smallText" style="color: #fff">This page will reload when the video is ready.</span></div>
+          </div>
+        <% } else { %>
+          <div style="width: 450px; height: 370px; background: #000; color: #fff; text-align: center"><div style="padding-top: 155px">This video is longer than the <%= maxVideoMinutes %>-minute conversion limit.</div></div>
+        <% } %>
+        </div>
+      </td>
+      <td width="410">
+        <div style="border: 1px solid #ccc; padding: 8px; margin-bottom: 10px">
+          <div style="font-size: 11px; margin-bottom: 8px">Added: <b><%= video.publishedDate %></b><br>From: <a href="/search?q=<%= encodeURIComponent(video.channelTitle) %>"><b><%= video.channelTitle %></b></a></div>
+          <div style="font-size: 12px; margin-bottom: 10px"><%= video.description %></div>
+          <div style="font-size: 11px"><b>Runtime:</b> <%= video.duration %><br><b>Views:</b> <%= video.viewCount %></div>
+          <div style="font-size: 11px; margin-top: 8px"><b>URL</b><br><input type="text" value="http://www.youtube.com/watch?v=<%= videoId %>" style="width: 375px; font-size: 10px"></div>
+        </div>
+        <div class="contentBox">
+          <div class="headerTitleLite" style="margin-bottom: 6px">Find More Videos</div>
+          <form method="get" action="/search"><input type="text" name="q" maxlength="128" style="width: 270px"> <input type="submit" value="Search"></form>
+          <div style="padding-top: 8px"><a href="/videos">Browse most viewed videos</a></div>
+        </div>
+      </td>
+    </tr></table>
+  <% } %>
 
-	<div style="font-size: 18px; font-weight: bold; color: #333; margin: 10px 0px 10px 0px;"><%= video.snippet.title %></div>
-
-	<table width="875" cellpadding="0" cellspacing="0" border="0">
-	<tr valign="top">
-		<td width="450" style="padding-right: 15px;">
-			<div id="playerDiv" style="margin-bottom: 10px;">
-				<% if (isCached) { %>
-					<!-- Windows Media Player 6.4 Object -->
-					<object id="MediaPlayer" 
-						classid="CLSID:22D6F312-B0F6-11D0-94AB-0080C74C7E95" 
-						width="450" height="370">
-						<param name="FileName" value="/cache/<%= videoId %>.mpg">
-						<param name="AutoStart" value="true">
-						<param name="ShowControls" value="true">
-						<param name="ShowStatusBar" value="true">
-						<embed type="application/x-mplayer2" 
-							src="/cache/<%= videoId %>.mpg" 
-							width="450" height="370" 
-							autostart="true">
-						</embed>
-					</object>
-				<% } else { %>
-					<div id="start_link_container" style="width: 450px; height: 370px; background-color: #000; color: #FFF; text-align: center;">
-						<div style="padding-top: 150px;">
-							Video requires conversion for Windows 98.<br><br>
-							<a href="#" onclick="return startTranscode();" style="color: yellow; font-weight: bold;">[ Click here to Start Conversion ]</a>
-						</div>
-					</div>
-					<div id="progress_container" style="display:none; width: 450px; height: 370px; background-color: #000; color: #FFF; text-align: center;">
-						<div style="padding-top: 150px;">
-							Processing Video...<br><br>
-							<div style="width: 200px; height: 20px; border: 1px solid white; background: #333; margin: 0 auto;">
-								<div id="progress_bar" style="width: 0%; height: 100%; background: #0033CC;"></div>
-							</div>
-							<br>
-							<span id="progress_text">0%</span>
-						</div>
-					</div>
-				<% } %>
-			</div>
-
-			<!-- Action Bar -->
-			<div style="background-color: #EEEEEE; border: 1px solid #CCCCCC; border-top: 0px; padding: 5px; margin-bottom: 10px;">
-				<table width="100%" cellpadding="0" cellspacing="0" border="0">
-					<tr valign="top">
-						<td width="30%">
-							<div style="font-size: 11px; margin-bottom: 2px;"><a href="#" class="noul">Login</a> to rate</div>
-                            <% 
-                                var score = parseFloat(video.rating);
-                                var fullStars = Math.floor(score);
-                                var halfStar = (score - fullStars) >= 0.5 ? 1 : 0;
-                                var emptyStars = 5 - fullStars - halfStar;
-                            %>
-                            <% for(let i=0; i<fullStars; i++) { %>
-                                <img src="/images/star_sm.gif" border="0" />
-                            <% } %>
-                            <% if(halfStar) { %>
-                                <img src="/images/star_sm_half.gif" border="0" />
-                            <% } %>
-                            <% for(let i=0; i<emptyStars; i++) { %>
-                                <img src="/images/star_sm_bg.gif" border="0" />
-                            <% } %>
-							<div style="font-size: 10px;"><%= Math.floor(Math.random() * 5000) %> ratings</div>
-						</td>
-						<td align="center" style="font-size: 11px;">
-							<table cellpadding="0" cellspacing="0" border="0">
-								<tr>
-									<td align="left" style="padding-bottom: 3px;">
-										<img src="/images/icon_favorites.gif" height="12" align="absmiddle" border="0" style="vertical-align: middle; margin-right: 3px;">
-                                        <% if (typeof isFavorite !== 'undefined' && isFavorite) { %>
-                                            <form action="/favorites/remove" method="post" style="display:inline;">
-                                                <input type="hidden" name="video_id" value="<%= videoId %>">
-                                                <input type="submit" value="Remove Favorite" style="font-size: 11px; border: 0; background: none; color: #0033CC; text-decoration: underline; cursor: pointer; padding: 0; font-family: Arial, Helvetica, sans-serif;">
-                                            </form>
-                                        <% } else { %>
-                                            <form action="/favorites/add" method="post" style="display:inline;">
-                                                <input type="hidden" name="video_id" value="<%= videoId %>">
-                                                <input type="hidden" name="title" value="<%= video.snippet.title %>">
-                                                <input type="hidden" name="channel_title" value="<%= video.snippet.channelTitle %>">
-                                                <input type="hidden" name="thumbnail" value="<%= video.snippet.thumbnails.default.url %>">
-                                                <input type="hidden" name="duration" value="<%= video.formattedDuration %>">
-                                                <input type="hidden" name="view_count" value="<%= video.formattedViews %>">
-                                                <input type="submit" value="Save to Favorites" style="font-size: 11px; border: 0; background: none; color: #0033CC; text-decoration: underline; cursor: pointer; padding: 0; font-family: Arial, Helvetica, sans-serif;">
-                                            </form>
-                                        <% } %>
-									</td>
-									<td width="10"></td>
-									<td align="left" style="padding-bottom: 3px;">
-										<img src="/images/icon_groups.gif" height="12" align="absmiddle" border="0" style="vertical-align: middle; margin-right: 3px;">
-                                        <% if (typeof inQuicklist !== 'undefined' && inQuicklist) { %>
-                                            <form action="/quicklist/remove" method="post" style="display:inline;">
-                                                <input type="hidden" name="video_id" value="<%= videoId %>">
-                                                <input type="submit" value="Remove QuickList" style="font-size: 11px; border: 0; background: none; color: #0033CC; text-decoration: underline; cursor: pointer; padding: 0; font-family: Arial, Helvetica, sans-serif;">
-                                            </form>
-                                        <% } else { %>
-                                            <form action="/quicklist/add" method="post" style="display:inline;">
-                                                <input type="hidden" name="video_id" value="<%= videoId %>">
-                                                <input type="hidden" name="title" value="<%= video.snippet.title %>">
-                                                <input type="hidden" name="channel_title" value="<%= video.snippet.channelTitle %>">
-                                                <input type="hidden" name="thumbnail" value="<%= video.snippet.thumbnails.default.url %>">
-                                                <input type="hidden" name="duration" value="<%= video.formattedDuration %>">
-                                                <input type="hidden" name="view_count" value="<%= video.formattedViews %>">
-                                                <input type="submit" value="Add to QuickList" style="font-size: 11px; border: 0; background: none; color: #0033CC; text-decoration: underline; cursor: pointer; padding: 0; font-family: Arial, Helvetica, sans-serif;">
-                                            </form>
-                                        <% } %>
-									</td>
-								</tr>
-								<tr>
-									<td align="left">
-										<img src="/images/icon_share.gif" height="12" align="absmiddle" border="0" style="vertical-align: middle; margin-right: 3px;">
-										<a href="#" class="noul"><span class="eLink">Share Video</span></a>
-									</td>
-									<td width="10"></td>
-									<td align="left">
-										<img src="/images/icon_post.gif" height="12" align="absmiddle" border="0" style="vertical-align: middle; margin-right: 3px;">
-										<a href="#" class="noul"><span class="eLink">Post Video</span></a>
-									</td>
-								</tr>
-							</table>
-						</td>
-						<td width="25%" align="right" style="font-size: 11px;">
-							<img src="/images/icon_flag.gif" height="12" align="absmiddle" border="0" style="vertical-align: middle; margin-right: 3px;">
-							<a href="#" class="noul"><span class="eLink">Flag as<br>Inappropriate</span></a>
-						</td>
-					</tr>
-				</table>
-			</div>
-
-			<!-- Stats Line -->
-			<div style="font-size: 12px; font-weight: bold; color: #333; margin-bottom: 15px; border-bottom: 1px dotted #CCCCCC; padding-bottom: 5px;">
-				Views: <span style="color: #000;"><%= video.formattedViews %></span> 
-				<span style="padding: 0px 5px; color: #999;">|</span> 
-				Comments: <span style="color: #000;"><%= video.commentCount %></span> 
-				<span style="padding: 0px 5px; color: #999;">|</span>
-				Favorited: <span style="color: #000;"><%= Math.floor(Math.random() * 100) %></span> times
-			</div>
-
-			<!-- Comments Section -->
-			<div id="commentsDiv">
-				<div style="background-color: #EEEEEE; border-top: 1px dashed #999; border-bottom: 1px dashed #999; padding: 5px; margin-bottom: 10px;">
-					<table width="100%" cellpadding="0" cellspacing="0" border="0">
-						<tr>
-							<td align="left"><b>Comments &amp; Responses</b></td>
-							<td align="right" style="font-size: 11px;">
-								<a href="#">Post a video response</a> <span style="color: #999;">|</span> <a href="#">Post a text comment</a>
-							</td>
-						</tr>
-					</table>
-				</div>
-	
-				<div id="recent_comments">
-					<div id="show_comments_btn_div" style="padding: 10px; text-align: center;">
-						<input type="button" value="Show Comments" onclick="showComments()">
-					</div>
-					<div id="all_comments" style="display: none;">
-						<div id="all_comments_content"></div>
-					</div>
-				</div>
-			</div>
-		</td>
-
-		<td width="280">
-			<!-- Director Videos (Mock) -->
-			<div style="margin-bottom: 10px;">
-				<div style="float: right; font-size: 14px; color: #666;">Director Videos</div>
-				<div style="clear: both;"></div>
-				<div style="background-color: #660000; padding: 1px;">
-					<div style="background-color: #FFF; border: 1px solid #660000; padding: 5px; text-align: center;">
-						<img src="/images/youtube_logo.jpg" width="80" style="border: 1px solid #CCC;"><br>
-						<a href="#" style="font-size: 11px;"><b>More from Directors</b></a>
-					</div>
-				</div>
-			</div>
-
-			<!-- Video Info Box -->
-			<div style="border: 1px solid #CCCCCC; padding: 5px; margin-bottom: 10px;">
-				<div style="margin-bottom: 5px;">
-					<div style="float: right;">
-						<a href="#"><img src="/images/btn_subscribe_sm_yellow_99x16.gif" width="99" height="16" alt="subscribe" border="0" style="background-color: #FFCC00; border: 1px solid #CCC;"></a>
-					</div>
-					<div style="font-size: 11px;">
-						Added: <b><%= video.formattedDate %></b><br>
-						From: <a href="#"><b><%= video.snippet.channelTitle %></b></a>
-					</div>
-				</div>
-				
-				<div style="font-size: 12px; margin-bottom: 10px;">
-					<%- video.snippet.descriptionHtml %>
-				</div>
-
-				<div style="font-size: 11px; margin-bottom: 5px;">
-					Category: <a href="#">Entertainment</a>
-				</div>
-				
-				<div style="font-size: 11px; margin-bottom: 5px;">
-					Tags: <a href="#">video</a>, <a href="#">retro</a>, <a href="#">98</a>
-				</div>
-
-				<div style="font-size: 11px; margin-bottom: 5px;">
-					<div style="margin-bottom: 2px;"><b>URL</b></div>
-					<input type="text" value="http://www.youtube.com/watch?v=<%= videoId %>" style="width: 260px; font-size: 10px;">
-				</div>
-				
-				<div style="font-size: 11px;">
-					<div style="margin-bottom: 2px;"><b>Embed</b></div>
-					<input type="text" value='<object width="425" height="350">...</object>' style="width: 260px; font-size: 10px;">
-				</div>
-			</div>
-
-			<!-- Related Videos -->
-			<div style="margin-bottom: 5px;">
-				<div style="float: left; margin-right: 5px; background: #E5E5E5; border: 1px solid #CCC; border-bottom: 1px solid #E5E5E5; padding: 5px 10px; font-weight: bold; font-size: 12px; border-radius: 3px 3px 0 0; position: relative; top: 1px; z-index: 100;">
-					Related
-				</div>
-				<div style="float: left; margin-right: 5px; background: #EEE; border: 1px solid #CCC; border-bottom: 1px solid #CCC; padding: 5px 10px; font-size: 12px; border-radius: 3px 3px 0 0;">
-					<a href="#" class="noul">More from this user</a>
-				</div>
-				<div style="float: left; background: #EEE; border: 1px solid #CCC; border-bottom: 1px solid #CCC; padding: 5px 10px; font-size: 12px; border-radius: 3px 3px 0 0;">
-					<a href="#" class="noul">Playlists</a>
-				</div>
-				<div style="clear: both;"></div>
-			</div>
-			<div style="background-color: #E5E5E5; border: 1px solid #CCCCCC; padding: 5px; margin-top: 0px;">
-				<div style="text-align: right; font-size: 11px; margin-bottom: 5px;">
-					Showing 1-20 of about 143,000 &nbsp; <a href="#">See All Videos</a>
-				</div>
-				<% if (relatedVideos && relatedVideos.length > 0) { %>
-					<% relatedVideos.forEach(function(relVideo) { %>
-						<div style="margin-bottom: 10px; background-color: #FFF; padding: 2px;">
-							<table border="0" cellpadding="0" cellspacing="0" width="100%">
-								<tr valign="top">
-									<td width="90">
-										<a href="/watch?v=<%= relVideo.id %>"><img src="/thumbnail?url=<%= encodeURIComponent(relVideo.thumbnail) %>" width="80" height="60" style="border: 1px solid #CCC;"></a>
-									</td>
-									<td>
-										<div style="font-size: 11px; font-weight: bold;"><a href="/watch?v=<%= relVideo.id %>"><%= relVideo.title %></a></div>
-										<div style="font-size: 10px; color: #666;">
-											<%= relVideo.duration %><br>
-											From: <a href="#"><%= relVideo.channelTitle %></a><br>
-											Views: <%= relVideo.viewCount %>
-										</div>
-									</td>
-								</tr>
-							</table>
-						</div>
-					<% }); %>
-				<% } else { %>
-					<div class="smallText">No related videos found.</div>
-				<% } %>
-			</div>
-		</td>
-	</tr>
-	</table>
-
-	<div id="footerDiv">
-		<div id="footerCopyright">
-			Copyright &copy; 2006 YouTube, Inc. | <a href="#">About</a> | <a href="#">Contact</a> | <a href="#">Terms of Use</a> | <a href="#">Privacy Policy</a>
-		</div>
-	</div>
-
+  <div id="footerDiv"><div id="footerCopyright">98Tuber | <a href="/">Home</a> | <a href="/videos">Videos</a></div></div>
 </div>
 </body>
 </html>

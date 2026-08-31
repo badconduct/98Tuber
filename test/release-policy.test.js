@@ -36,7 +36,8 @@ test("youtubei media downloads have the required deciphering evaluator", () => {
   assert.match(youtubeClient, /Platform\.shim\.eval/);
   assert.match(youtubeClient, /new Jinter/);
   assert.match(youtubeClient, /parseFloat, console/);
-  assert.match(server, /getInnertube\(\)/);
+  assert.match(server, /getMediaClient\(\)/);
+  assert.match(server, /require\("\.\/youtube-client"\)\.getInnertube/);
   assert.match(dockerfile, /COPY --chown=node:node viewer-server\.js youtube-client\.js/);
 });
 
@@ -50,4 +51,5 @@ test("CI scans and publishes the same loaded image", () => {
   assert.equal(builds.length, 1);
   assert.match(workflow, /image-ref: 98tuber:ci/);
   assert.match(workflow, /docker tag 98tuber:ci/);
+  assert.match(workflow, /Exercise the production period layout/);
 });

@@ -1,445 +1,90 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
-  <head>
-    <title>YouTube - Broadcast Yourself.</title>
-    <link rel="stylesheet" href="/base.css" type="text/css" />
-  </head>
-  <body>
-    <div id="baseDiv">
-      <%- include('header', { page: 'home' }) %>
+<head>
+  <title>YouTube - Broadcast Yourself.</title>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <link rel="stylesheet" href="/base.css" type="text/css">
+</head>
+<body>
+<div id="baseDiv">
+  <%- include('header', { page: page, query: '' }) %>
 
-      <!-- Search Bar -->
-      <table
-        align="center"
-        cellpadding="0"
-        cellspacing="0"
-        border="0"
-        style="margin-bottom: 10px"
-      >
-        <tr>
-          <form name="searchForm" id="searchForm" method="GET" action="/search">
-            <td style="padding-right: 5px">
-              <input
-                tabindex="1"
-                type="text"
-                name="q"
-                maxlength="128"
-                style="color: #333; font-size: 12px; width: 300px"
-              />
-            </td>
-            <td>
-              <input type="submit" value="Search Videos" />
-            </td>
-          </form>
-        </tr>
-      </table>
+  <% if (error) { %><div class="errorBox"><%= error %></div><% } %>
 
-      <!-- Main Content Table -->
-      <table
-        width="790"
-        align="center"
-        cellpadding="0"
-        cellspacing="0"
-        border="0"
-      >
-        <tr valign="top">
-          <td style="padding-right: 15px" width="595">
-            <!-- Watch/Upload/Share Box -->
-            <table
-              class="roundedTable"
-              width="595"
-              align="center"
-              cellpadding="0"
-              cellspacing="0"
-              border="0"
-              bgcolor="#EFEFEF"
-            >
-              <tr>
-                <td width="585" style="padding: 5px">
-                  <table
-                    width="100%"
-                    cellpadding="0"
-                    cellspacing="0"
-                    border="0"
-                  >
-                    <tr valign="top">
-                      <td
-                        width="33%"
-                        style="
-                          border-right: 1px dashed #369;
-                          padding: 0px 10px 10px 10px;
-                          color: #444;
-                        "
-                      >
-                        <div
-                          style="
-                            font-size: 16px;
-                            font-weight: bold;
-                            margin-bottom: 5px;
-                          "
-                        >
-                          <a href="/videos">Watch</a>
-                        </div>
-                        Instantly find and watch 1000's of fast streaming
-                        videos.
-                      </td>
-                      <td
-                        width="33%"
-                        style="
-                          border-right: 1px dashed #369;
-                          padding: 0px 10px 10px 10px;
-                          color: #444;
-                        "
-                      >
-                        <div
-                          style="
-                            font-size: 16px;
-                            font-weight: bold;
-                            margin-bottom: 5px;
-                          "
-                        >
-                          <a href="/upload">Upload</a>
-                        </div>
-                        Quickly upload and tag videos in almost any video
-                        format.
-                      </td>
-                      <td
-                        width="33%"
-                        style="padding: 0px 10px 10px 10px; color: #444"
-                      >
-                        <div
-                          style="
-                            font-size: 16px;
-                            font-weight: bold;
-                            margin-bottom: 5px;
-                          "
-                        >
-                          <a href="#">Share</a>
-                        </div>
-                        Easily share your videos with family, friends, or
-                        co-workers.
-                      </td>
-                    </tr>
-                  </table>
-                </td>
-              </tr>
-            </table>
+  <table width="790" align="center" cellpadding="0" cellspacing="0" border="0">
+    <tr valign="top">
+      <td width="595" style="padding-right: 15px">
+        <table class="roundedTable" width="595" cellpadding="0" cellspacing="0" border="0" bgcolor="#FFFFFF">
+          <tr><td style="padding: 5px 10px 12px 10px">
+            <div style="margin-bottom: 6px">
+              <span style="font-size: 13px; color: #6d6d6d; font-weight: bold">Recently Featured</span>
+              <span style="float: right; font-size: 11px"><a href="/videos">More Videos...</a></span>
+            </div>
+            <% if (recentlyFeatured.length) { %>
+            <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+              <% recentlyFeatured.forEach(function(video) { %>
+              <td width="25%" align="center" valign="top">
+                <a href="/watch?v=<%= video.id %>"><img src="/thumbnail?url=<%= encodeURIComponent(video.thumbnail) %>" width="80" height="60" border="0" alt="" style="border: 1px solid #999"></a>
+                <div style="font-size: 10px; padding: 3px 4px 0 4px"><a href="/watch?v=<%= video.id %>"><%= video.title.substring(0, 24) %><%= video.title.length > 24 ? '...' : '' %></a></div>
+              </td>
+              <% }); %>
+            </tr></table>
+            <% } else if (!error) { %><div class="smallText">No featured videos were returned.</div><% } %>
+          </td></tr>
+        </table>
 
-            <!-- Recently Viewed (Director Videos) -->
-            <table
-              class="roundedTable"
-              width="595"
-              align="center"
-              cellpadding="0"
-              cellspacing="0"
-              border="0"
-              bgcolor="#FFFFFF"
-            >
-              <tr>
-                <td width="575" style="padding: 5px">
-                  <div
-                    style="
-                      padding-left: 10px;
-                      padding-right: 10px;
-                      margin-bottom: 5px;
-                    "
-                  >
-                    <span
-                      style="font-size: 13px; color: #6d6d6d; font-weight: bold"
-                      >Recently Viewed</span
-                    >
-                    <span style="float: right; font-size: 11px"
-                      ><a href="/videos">More...</a></span
-                    >
-                  </div>
+        <table class="roundedTable" width="595" cellpadding="0" cellspacing="0" border="0" bgcolor="#CCCCCC">
+          <tr><td style="padding: 1px">
+            <div class="sunkenTitleBar"><div class="sunkenTitle">
+              <div style="float: right; padding-right: 5px; font-size: 12px"><a href="/videos">See More Videos</a></div>
+              <span style="color: #444">Today's Featured Videos...</span>
+            </div></div>
+            <div style="background-color: #fff; padding: 5px">
+              <% featuredVideos.forEach(function(video) { %>
+              <div class="moduleEntry">
+                <table width="565" cellpadding="0" cellspacing="0" border="0"><tr valign="top">
+                  <td width="130"><a href="/watch?v=<%= video.id %>"><img src="/thumbnail?url=<%= encodeURIComponent(video.thumbnail) %>" class="moduleEntryThumb" width="120" height="90" border="0" alt=""></a></td>
+                  <td>
+                    <div class="moduleEntryTitle"><a href="/watch?v=<%= video.id %>"><%= video.title %></a></div>
+                    <div class="moduleEntryDescription"><%= video.description.substring(0, 150) %><%= video.description.length > 150 ? '...' : '' %></div>
+                    <div class="moduleEntryDetails">Added: <%= video.publishedAt %> by <a href="/search?q=<%= encodeURIComponent(video.channelTitle) %>"><%= video.channelTitle %></a></div>
+                    <div class="moduleEntryDetails">Runtime: <%= video.duration %> | Views: <%= video.viewCount %></div>
+                  </td>
+                </tr></table>
+              </div>
+              <% }); %>
+            </div>
+          </td></tr>
+        </table>
+      </td>
 
-                  <table
-                    width="100%"
-                    cellpadding="0"
-                    cellspacing="0"
-                    border="0"
-                  >
-                    <tr>
-                      <% directorVideos.slice(0, 4).forEach(function(video) { %>
-                      <td width="25%" align="center" valign="top">
-                        <a href="/watch?v=<%= video.id %>"
-                          ><img
-                            src="/thumbnail?url=<%= encodeURIComponent(video.thumbnail) %>"
-                            width="80"
-                            height="60"
-                            border="0"
-                            style="border: 1px solid #999"
-                        /></a>
-                        <div style="font-size: 10px; padding-top: 2px">
-                          <a href="/watch?v=<%= video.id %>"
-                            ><%= video.title.substring(0, 20) %>...</a
-                          >
-                        </div>
-                      </td>
-                      <% }); %>
-                    </tr>
-                  </table>
-                </td>
-              </tr>
-            </table>
+      <td width="180">
+        <table class="roundedTable" width="180" cellpadding="0" cellspacing="0" border="0" bgcolor="#FFEEBB">
+          <tr><td style="padding: 8px">
+            <div style="font-size: 14px; font-weight: bold; margin-bottom: 7px">Browse Videos</div>
+            <div style="line-height: 20px">
+              &raquo; <a href="/videos">Most Viewed</a><br>
+              &raquo; <a href="/search?q=music">Music</a><br>
+              &raquo; <a href="/search?q=comedy">Comedy</a><br>
+              &raquo; <a href="/search?q=technology">Technology</a><br>
+              &raquo; <a href="/search?q=film+animation">Film &amp; Animation</a>
+            </div>
+          </td></tr>
+        </table>
 
-            <!-- Featured Videos -->
-            <table
-              class="roundedTable"
-              width="595"
-              align="center"
-              cellpadding="0"
-              cellspacing="0"
-              border="0"
-              bgcolor="#CCCCCC"
-            >
-              <tr>
-                <td width="585" style="padding: 1px">
-                  <div class="sunkenTitleBar">
-                    <div class="sunkenTitle">
-                      <div
-                        style="
-                          float: right;
-                          padding: 1px 5px 0px 0px;
-                          font-size: 12px;
-                        "
-                      >
-                        <a href="/videos">See More Videos</a>
-                      </div>
-                      <span style="color: #444"
-                        >Today's Featured Videos...</span
-                      >
-                    </div>
-                  </div>
+        <table class="roundedTable" width="180" cellpadding="0" cellspacing="0" border="0" bgcolor="#EEEEEE" style="margin-top: 10px">
+          <tr><td style="padding: 8px">
+            <div style="font-size: 14px; font-weight: bold; margin-bottom: 7px">Active Channels</div>
+            <% activeChannels.forEach(function(video) { %>
+              <div class="hpChannelEntry">&raquo; <a href="/search?q=<%= encodeURIComponent(video.channelTitle) %>"><%= video.channelTitle %></a></div>
+            <% }); %>
+          </td></tr>
+        </table>
+      </td>
+    </tr>
+  </table>
 
-                  <div style="background-color: #ffffff; padding: 5px">
-                    <% featuredVideos.forEach(function(video) { %>
-                    <div class="moduleEntry">
-                      <table
-                        width="565"
-                        cellpadding="0"
-                        cellspacing="0"
-                        border="0"
-                      >
-                        <tr valign="top">
-                          <td width="130">
-                            <a href="/watch?v=<%= video.id %>"
-                              ><img
-                                src="/thumbnail?url=<%= encodeURIComponent(video.thumbnail) %>"
-                                class="moduleEntryThumb"
-                                width="120"
-                                height="90"
-                                border="0"
-                                style="border: 1px solid #999"
-                            /></a>
-                          </td>
-                          <td width="100%">
-                            <div class="moduleEntryTitle">
-                              <a href="/watch?v=<%= video.id %>"
-                                ><%= video.title %></a
-                              >
-                            </div>
-                            <div class="moduleEntryDescription">
-                              <%= video.description.substring(0, 150) %>...
-                            </div>
-
-                            <div class="moduleEntryTags">
-                              Tags // <a href="#">video</a>
-                            </div>
-
-                            <div class="moduleEntryTags">
-                              Channels // <a href="#">Entertainment</a>
-                            </div>
-
-                            <div class="moduleEntryDetails">
-                              Added: <%= video.publishedAt %> by
-                              <a href="#"><%= video.channelTitle %></a>
-                            </div>
-                            <div class="moduleEntryDetails">
-                              Runtime: <%= video.duration %> | Views: <%=
-                              video.viewCount %> | Comments: <%=
-                              video.ratingCount %>
-                            </div>
-                            <div style="color: #666; font-size: 10px">
-                              <% 
-                                var score = parseFloat(video.rating);
-                                var fullStars = Math.floor(score);
-                                var halfStar = (score - fullStars) >= 0.5 ? 1 : 0;
-                                var emptyStars = 5 - fullStars - halfStar;
-                              %>
-                              <% for(let i=0; i<fullStars; i++) { %>
-                                <img src="/images/star_sm.gif" border="0" />
-                              <% } %>
-                              <% if(halfStar) { %>
-                                <img src="/images/star_sm_half.gif" border="0" />
-                              <% } %>
-                              <% for(let i=0; i<emptyStars; i++) { %>
-                                <img src="/images/star_sm_bg.gif" border="0" />
-                              <% } %>
-                              (<%= video.ratingCount %> ratings)
-                            </div>
-                          </td>
-                        </tr>
-                      </table>
-                    </div>
-                    <% }); %>
-                  </div>
-                </td>
-              </tr>
-            </table>
-          </td>
-          <td width="180">
-            <!-- Sign Up Box -->
-            <table
-              class="roundedTable"
-              width="180"
-              align="center"
-              cellpadding="0"
-              cellspacing="0"
-              border="0"
-              bgcolor="#ffeebb"
-            >
-              <tr>
-                <td width="170" style="padding: 5px">
-                  <div
-                    style="
-                      font-size: 14px;
-                      font-weight: bold;
-                      text-align: center;
-                      padding: 5px 5px 10px 5px;
-                    "
-                  >
-                    <a href="/signup">Sign up for your free account!</a>
-                  </div>
-                </td>
-              </tr>
-            </table>
-
-            <!-- Explore Features -->
-            <table
-              class="roundedTable"
-              width="180"
-              align="center"
-              cellpadding="0"
-              cellspacing="0"
-              border="0"
-              bgcolor="#cccccc"
-            >
-              <tr>
-                <td width="170" style="padding: 5px">
-                  <div
-                    style="
-                      font-size: 13px;
-                      font-weight: bold;
-                      text-align: center;
-                      color: #444444;
-                      padding-bottom: 5px;
-                    "
-                  >
-                    Explore New Features
-                  </div>
-                  <div
-                    style="
-                      background-color: #eaeaea;
-                      padding: 5px;
-                      text-align: center;
-                    "
-                  >
-                    <div style="padding-top: 5px">
-                      <a href="/channels">Channels</a>
-                    </div>
-                    <div
-                      style="
-                        font-size: 11px;
-                        font-weight: normal;
-                        padding-bottom: 8px;
-                      "
-                    >
-                      Find the videos you want.
-                    </div>
-                    <div style="padding-top: 5px">
-                      <a href="/groups">Groups</a>
-                    </div>
-                    <div
-                      style="
-                        font-size: 11px;
-                        font-weight: normal;
-                        padding-bottom: 12px;
-                      "
-                    >
-                      Join the community.
-                    </div>
-                  </div>
-                </td>
-              </tr>
-            </table>
-
-            <!-- Active Channels / Users -->
-            <table
-              class="roundedTable"
-              width="180"
-              align="center"
-              cellpadding="0"
-              cellspacing="0"
-              border="0"
-              bgcolor="#eeeedd"
-            >
-              <tr>
-                <td width="170" style="padding: 5px">
-                  <div
-                    style="
-                      font-size: 14px;
-                      font-weight: bold;
-                      margin-bottom: 8px;
-                      color: #666633;
-                    "
-                  >
-                    Active Channels
-                  </div>
-                  <% activeChannels.slice(0, 5).forEach(function(channel) { %>
-                  <div
-                    style="
-                      font-size: 12px;
-                      font-weight: bold;
-                      margin-bottom: 5px;
-                    "
-                  >
-                    <a href="#"><%= channel.title %></a>
-                  </div>
-                  <div
-                    style="
-                      font-size: 12px;
-                      margin-bottom: 8px;
-                      padding-bottom: 10px;
-                      border-bottom: 1px dashed #cccc66;
-                    "
-                  >
-                    <img
-                      src="/thumbnail?url=<%= encodeURIComponent(channel.thumbnail) %>"
-                      width="40"
-                      height="30"
-                      align="left"
-                      style="margin-right: 5px; border: 1px solid #999"
-                    />
-                    <%= channel.videoCount %> Videos<br />
-                    <%= channel.subscriberCount %> Subs
-                    <br clear="all" />
-                  </div>
-                  <% }); %>
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-      </table>
-
-      <div align="center" class="footer">
-        <a href="#">Our Blog</a> | <a href="#">About Us</a> |
-        <a href="#">Help</a> | <a href="#">Developers</a> |
-        <a href="#">Terms of Use</a> | <a href="#">Privacy Policy</a> |
-        <a href="#">Jobs</a> <br /><br />
-        Copyright &copy; 2006 YouTube, Inc.&#8482;
-      </div>
-    </div>
-  </body>
+  <div id="footerDiv"><div id="footerCopyright">98Tuber | <a href="/">Home</a> | <a href="/videos">Videos</a></div></div>
+</div>
+</body>
 </html>

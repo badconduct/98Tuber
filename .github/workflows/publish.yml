@@ -45,6 +45,35 @@ jobs:
           done
           docker logs 98tuber-ci
           exit 1
+      - name: Exercise the production period layout
+        run: |
+          docker exec --interactive 98tuber-ci node - <<'NODE'
+          const ejs = require("ejs");
+          const video = {
+            id: "jNQXAC9IVRw",
+            title: "A test video",
+            channelTitle: "Test Channel",
+            description: "Fixture description",
+            thumbnail: "https://i.ytimg.com/vi/jNQXAC9IVRw/default.jpg",
+            duration: "0:19",
+            durationSeconds: 19,
+            publishedAt: "20 years ago",
+            publishedDate: "April 23, 2005",
+            viewCount: "1,000,000",
+          };
+          ejs.renderFile("/app/views/index.ejs", {
+            page: "home",
+            recentlyFeatured: [video],
+            featuredVideos: [video],
+            activeChannels: [video],
+            error: null,
+          }, (error, html) => {
+            if (error) throw error;
+            if (!html.includes("Today's Featured Videos") ||
+                !html.includes("/watch?v=jNQXAC9IVRw") ||
+                html.includes("Windows 98 Video Viewer")) process.exit(1);
+          });
+          NODE
       - name: Exercise the production FFmpeg VCD command
         run: |
           docker exec 98tuber-ci ffmpeg -hide_banner -loglevel error \

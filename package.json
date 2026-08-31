@@ -6,11 +6,13 @@
   "scripts": {
     "start": "node viewer-server.js",
     "dev": "node --watch viewer-server.js",
-    "check": "node --check viewer-server.js && node --check youtube-client.js",
+    "preview:layout": "node scripts/layout-preview-server.js",
+    "check": "node --check viewer-server.js && node --check youtube-client.js && node --check scripts/layout-preview-server.js",
     "test": "npm run check && node --test"
   },
   "dependencies": {
     "dotenv": "^16.3.1",
+    "ejs": "^3.1.10",
     "express": "^4.18.2",
     "googleapis": "^176.0.0",
     "jintr": "^3.3.1",
