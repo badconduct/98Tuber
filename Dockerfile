@@ -16,6 +16,7 @@ RUN rm -rf /usr/local/lib/node_modules/npm \
     && rm -f /usr/local/bin/npm /usr/local/bin/npx
 COPY --from=build --chown=node:node /app/node_modules ./node_modules
 COPY --chown=node:node viewer-server.js youtube-client.js ./
+COPY --chown=node:node scripts/media-preflight.js ./scripts/
 COPY --chown=node:node public ./public
 COPY --chown=node:node views/header.ejs views/index.ejs views/search.ejs views/watch.ejs ./views/
 RUN mkdir /data && chown node:node /data
